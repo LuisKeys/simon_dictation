@@ -1,0 +1,39 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go build tool
+*.a
+*.o
+*.cgo1.go
+*.cgo2.c
+
+# Go workspace file
+go.work
+
+# Vendor directory
+/vendor/
+
+# Dependency directories
+Godeps/
+vendor/
+
+# IDE and editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+.env
+main
+vtt_models/
