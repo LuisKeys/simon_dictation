@@ -7,6 +7,11 @@ A voice dictation tool for converting speech to text for linux.
 - Real-time speech recognition
 - English and Spanish language support
 
+## Voice commands:
+"English" : Turn to English mode
+"Spanish" : Turn to Spanish mode
+"Origami" : Switch between mute and unmute
+
 ## Requirements
 
 ```bash
@@ -21,9 +26,14 @@ apt-get install xdotool
 # Clone the repository
 git clone https://github.com/username/simon_dictate.git
 cd simon_dictate
+mkdir vtt_models
 
-# Install dependencies
-go build /main.go```
+# Pull ggml-base.bin file from https://huggingface.co/ggerganov/whisper.cpp/tree/main
+# Copy that file inside vtt_models
+
+# Build the app
+go build /main.go
+```
 
 ## Usage
 

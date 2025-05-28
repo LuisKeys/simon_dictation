@@ -6,6 +6,8 @@ import (
 	"math"
 	"strings"
 	"time"
+
+	"github.com/luiskeys/simon_dictate/src/input"
 )
 
 func Init() *VTTService {
@@ -34,28 +36,6 @@ func (vtt *VTTService) Run() {
 	for {
 		time.Sleep(10 * time.Millisecond)
 	}
-}
-
-func (vtt *VTTService) dispatch(audioData []float32) {
-	if len(audioData) == 0 {
-		return
-	}
-	go func(data []float32) {
-		text, err := vtt.whisperModel.Transcribe(data, vtt.language)
-		if err != nil {
-			log.Printf("transcription error: %v", err)
-			return
-		}
-		text = strings.TrimSpace(text)
-		if text != "" {
-			log.Printf("Transcribed text: %s", text)
-			iscmd := Commands(vtt, text)
-			if vtt.DictationEnabled && !iscmd {
-				// inp.Send(text)
-				log.Printf("Sent text: %s", text)
-			}
-		}
-	}(append([]float32(nil), audioData...)) // copy to avoid races
 }
 
 func (vtt *VTTService) Listen() {
@@ -121,4 +101,26 @@ func (vtt *VTTService) Listen() {
 		case <-ticker.C:
 		}
 	}
+}
+
+func (vtt *VTTService) dispatch(audioData []float32) {
+	if len(audioData) == 0 {
+		return
+	}
+	go func(data []float32) {
+		text, err := vtt.whisperModel.Transcribe(data, vtt.language)
+		if err != nil {
+			log.Printf("transcription error: %v", err)
+			return
+		}
+		text = strings.TrimSpace(text)
+		if text != "" {
+			log.Printf("Transcribed text: %s", text)
+			iscmd := Commands(vtt, text)
+			if vtt.DictationEnabled && !iscmd {
+				input.Send(text)
+				//log.Printf("Sent text: %s", text)
+			}
+		}
+	}(append([]float32(nil), audioData...)) // copy to avoid races
 }
