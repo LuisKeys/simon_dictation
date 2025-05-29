@@ -113,12 +113,7 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			log.Printf("transcription error: %v", err)
 			return
 		}
-		text = strings.TrimSpace(text)
-		text = strings.ReplaceAll(text, ".", "")
-		if len(text) > 0 {
-			text = strings.ToLower(string(text[0])) + text[1:]
-		}
-		text = " " + text
+		text = normalizeText(text)
 		if text != "" {
 			log.Printf("Transcribed text: %s", text)
 			iscmd := Commands(vtt, text)
@@ -128,4 +123,25 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			}
 		}
 	}(append([]float32(nil), audioData...)) // copy to avoid races
+}
+
+func normalizeText(text string) string {
+	text = strings.TrimSpace(text)
+	text = strings.ReplaceAll(text, ".", "")
+	if len(text) > 0 {
+		text = strings.ToLower(string(text[0])) + text[1:]
+	}
+
+	text = strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == ' ' ||
+			r == 'á' || r == 'é' || r == 'í' || r == 'ó' || r == 'ú' || r == 'ü' || r == 'ñ' ||
+			r == 'Á' || r == 'É' || r == 'Í' || r == 'Ó' || r == 'Ú' || r == 'Ü' || r == 'Ñ' {
+			return r
+		}
+		return -1
+	}, text)
+
+	text = strings.TrimSpace(text)
+	text = " " + text
+	return text
 }
