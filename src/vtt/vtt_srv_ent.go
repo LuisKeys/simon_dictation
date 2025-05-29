@@ -50,7 +50,7 @@ func NewVTTSrv() (*VTTService, error) {
 		rate:      16000,
 		chunkSize: 2048,
 		channels:  1,
-		language:  "en",
+		language:  "es",
 		stopChan:  make(chan struct{}),
 	}
 
