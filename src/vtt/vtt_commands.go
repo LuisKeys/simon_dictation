@@ -12,16 +12,20 @@ func Commands(vtt *VTTService, cmd string) bool {
 	case "english":
 		vtt.language = "en"
 		log.Println("Language set to English")
+		Notification("Simon Dictate", "Language set to English")
 	case "spanish":
 		vtt.language = "es"
 		log.Println("Language set to Spanish")
+		Notification("Simon Dictate", "Language set to Spanish")
 	case "origami":
 		if vtt.DictationEnabled {
 			vtt.DictationEnabled = false
 			log.Println("Dictation disabled")
+			Notification("Simon Dictate", "Dictation disabled")
 		} else {
 			vtt.DictationEnabled = true
 			log.Println("Dictation enabled")
+			Notification("Simon Dictate", "Dictation enabled")
 		}
 	default:
 		return false

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/gen2brain/beeep"
 	"github.com/gordonklaus/portaudio"
 	"github.com/pkg/errors"
 )
@@ -152,4 +153,8 @@ func CalcMeanStdDev(samples []float64) (mean, stddev float64) {
 	}
 	stddev = math.Sqrt(varianceSum / float64(len(samples)))
 	return
+}
+
+func Notification(title, message string) error {
+	return beeep.Notify(title, message, "")
 }
