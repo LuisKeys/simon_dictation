@@ -10,7 +10,7 @@ A voice dictation tool for converting speech to text for linux.
 ## Voice commands:
 "English" : Turn to English mode
 "Spanish" : Turn to Spanish mode
-"Origami" : Switch between mute and unmute
+"Auto" : Switch between mute and unmute
 
 ## Requirements
 
