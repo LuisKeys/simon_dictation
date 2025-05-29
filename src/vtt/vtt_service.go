@@ -53,7 +53,7 @@ func (vtt *VTTService) Listen() {
 	silenceThreshold = 0.01
 
 	// Duration to collect noise samples before starting detection
-	noiseSampleDuration := 2 * time.Second
+	noiseSampleDuration := 1 * time.Second
 	noiseSampleFrames := int(noiseSampleDuration / (time.Duration(frameSize*1000/sampleRate) * time.Millisecond))
 
 	ticker := time.NewTicker(time.Duration(frameSize*1000/sampleRate) * time.Millisecond)
