@@ -141,6 +141,15 @@ func normalizeText(text string) string {
 		return -1
 	}, text)
 
+	text = strings.ReplaceAll(strings.ToLower(text), "music", "")
+	text = strings.ReplaceAll(strings.ToLower(text), "coughing", "")
+	text = strings.ReplaceAll(strings.ToLower(text), "laughing", "")
+
+	text = strings.ReplaceAll(strings.ToLower(text), "música", "")
+	text = strings.ReplaceAll(strings.ToLower(text), "risas", "")
+	text = strings.ReplaceAll(strings.ToLower(text), "risa", "")
+	text = strings.ReplaceAll(strings.ToLower(text), "tos", "")
+
 	text = strings.TrimSpace(text)
 	text = " " + text
 	return text
