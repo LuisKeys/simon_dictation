@@ -82,6 +82,12 @@ func (vtt *VTTService) Listen() {
 				if len(noiseSamples) >= noiseSampleFrames {
 					mean, stddev := CalcMeanStdDev(noiseSamples)
 					silenceThreshold = (mean + 2*stddev) * 15
+					if silenceThreshold > 0.01 {
+						// Retry collecting noise samples
+						noiseSamples = nil
+						fmt.Println("Silence threshold too high, retrying noise collection...")
+						continue
+					}
 					collectingNoise = false
 					noiseSamples = nil // free memory
 					fmt.Printf("Silence threshold set to: %f\n", silenceThreshold)
