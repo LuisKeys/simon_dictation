@@ -37,3 +37,4 @@ vendor/
 .env
 main
 vtt_models/
+__debug_bin*
