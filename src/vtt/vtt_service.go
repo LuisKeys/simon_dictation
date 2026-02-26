@@ -124,8 +124,9 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 	if len(audioData) == 0 {
 		return
 	}
-	go func(data []float32) {
-		text, err := vtt.whisperModel.Transcribe(data, vtt.language)
+	lang := vtt.GetLanguage()
+	go func(data []float32, lang string) {
+		text, err := vtt.whisperModel.Transcribe(data, lang)
 		if err != nil {
 			log.Printf("transcription error: %v", err)
 			return
@@ -139,7 +140,7 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 				//log.Printf("Sent text: %s", text)
 			}
 		}
-	}(append([]float32(nil), audioData...)) // copy to avoid races
+	}(append([]float32(nil), audioData...), lang) // copy to avoid races
 }
 
 func normalizeText(text string) string {
@@ -170,6 +171,8 @@ func normalizeText(text string) string {
 	text = strings.ReplaceAll(strings.ToLower(text), "tos", "")
 
 	text = strings.TrimSpace(text)
-	text = " " + text
+	if text != "" {
+		text = " " + text
+	}
 	return text
 }

@@ -174,3 +174,17 @@ func CalcMeanStdDev(samples []float64) (mean, stddev float64) {
 func Notification(title, message string) error {
 	return beeep.Notify(title, message, "")
 }
+
+// SetLanguage sets the transcription language in a thread-safe manner.
+func (vtt *VTTService) SetLanguage(lang string) {
+	vtt.mutex.Lock()
+	defer vtt.mutex.Unlock()
+	vtt.language = lang
+}
+
+// GetLanguage returns the current transcription language in a thread-safe manner.
+func (vtt *VTTService) GetLanguage() string {
+	vtt.mutex.RLock()
+	defer vtt.mutex.RUnlock()
+	return vtt.language
+}
