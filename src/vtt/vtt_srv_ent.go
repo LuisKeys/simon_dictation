@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -34,6 +35,9 @@ type VTTService struct {
 	stopChan  chan struct{}
 	AudioData chan []float32
 
+	// Noise gate: minimum RMS level to allow audio into the VAD pipeline (0 = disabled)
+	noiseGateThreshold float32
+
 	// Dictation status
 	DictationEnabled bool
 }
@@ -46,12 +50,24 @@ func NewVTTSrv() (*VTTService, error) {
 		return nil, errors.Wrap(err, "failed to initialize portaudio")
 	}
 
+	// Read noise gate threshold from environment variable
+	var noiseGate float32
+	if val := os.Getenv("VTT_NOISE_GATE"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 32); err == nil {
+			noiseGate = float32(parsed)
+			fmt.Printf("Noise gate threshold set to: %f\n", noiseGate)
+		} else {
+			log.Printf("Warning: invalid VTT_NOISE_GATE value %q, noise gate disabled", val)
+		}
+	}
+
 	service := &VTTService{
-		rate:      16000,
-		chunkSize: 2048,
-		channels:  1,
-		language:  "es",
-		stopChan:  make(chan struct{}),
+		rate:               16000,
+		chunkSize:          2048,
+		channels:           1,
+		language:           "es",
+		stopChan:           make(chan struct{}),
+		noiseGateThreshold: noiseGate,
 	}
 
 	// Find input device

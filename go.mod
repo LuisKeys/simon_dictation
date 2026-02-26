@@ -13,6 +13,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gordonklaus/portaudio v0.0.0-20250206071425-98a94950218b // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
+	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250317134145-8bc96cf8fc35 // indirect
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d // indirect
 	github.com/otiai10/gosseract v2.2.1+incompatible // indirect

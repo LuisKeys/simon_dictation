@@ -70,8 +70,6 @@ func (vtt *VTTService) Listen() {
 				return
 			}
 
-			buffer = append(buffer, frame...)
-
 			var sum float64
 			for _, s := range frame {
 				sum += float64(s * s)
@@ -95,14 +93,26 @@ func (vtt *VTTService) Listen() {
 				}
 			}
 
+			// Noise gate: frames below threshold are treated as absolute silence
+			// and are never appended to the speech buffer.
+			gated := vtt.noiseGateThreshold > 0 && rms < float64(vtt.noiseGateThreshold)
+
 			now := time.Now()
-			if rms > silenceThreshold {
+			if !gated && rms > silenceThreshold {
 				speaking = true
 				lastSoundTime = now
-			} else if speaking && now.Sub(lastSoundTime) > silenceDuration {
-				vtt.dispatch(buffer)
-				buffer = nil
-				speaking = false
+				buffer = append(buffer, frame...)
+			} else if speaking {
+				if !gated {
+					buffer = append(buffer, frame...)
+				}
+				if now.Sub(lastSoundTime) > silenceDuration {
+					vtt.dispatch(buffer)
+					buffer = nil
+					speaking = false
+				}
+			} else {
+				buffer = nil // pure silence, discard accumulated data
 			}
 
 		case <-ticker.C:
