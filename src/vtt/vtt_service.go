@@ -6,6 +6,7 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/luiskeys/simon_dictate/src/input"
 )
@@ -135,7 +136,9 @@ func normalizeText(text string) string {
 	text = strings.TrimSpace(text)
 	text = strings.ReplaceAll(text, ".", "")
 	if len(text) > 0 {
-		text = strings.ToLower(string(text[0])) + text[1:]
+		runes := []rune(text)
+		runes[0] = unicode.ToLower(runes[0])
+		text = string(runes)
 	}
 
 	text = strings.Map(func(r rune) rune {
