@@ -134,10 +134,32 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 		text = normalizeText(text)
 		if text != "" {
 			log.Printf("Transcribed text: %s", text)
-			iscmd := Commands(vtt, text)
-			if vtt.DictationEnabled && !iscmd {
-				input.Send(text)
-				//log.Printf("Sent text: %s", text)
+			iscmd, cmdText := Commands(vtt, text)
+			if iscmd {
+				if cmdText != "" {
+					input.Send(cmdText)
+					vtt.mutex.Lock()
+					if cmdText == "\n" {
+						vtt.lastSentNewline = true
+					} else {
+						vtt.lastSentNewline = false
+					}
+					vtt.mutex.Unlock()
+				} else {
+					vtt.mutex.Lock()
+					vtt.lastSentNewline = false
+					vtt.mutex.Unlock()
+				}
+			} else if vtt.DictationEnabled {
+				vtt.mutex.Lock()
+				sendText := text
+				if !vtt.lastSentNewline {
+					sendText = " " + text
+				}
+				vtt.lastSentNewline = false
+				vtt.mutex.Unlock()
+				input.Send(sendText)
+				//log.Printf("Sent text: %s", sendText)
 			}
 		}
 	}(append([]float32(nil), audioData...), lang) // copy to avoid races
@@ -171,8 +193,5 @@ func normalizeText(text string) string {
 	text = strings.ReplaceAll(strings.ToLower(text), "tos", "")
 
 	text = strings.TrimSpace(text)
-	if text != "" {
-		text = " " + text
-	}
 	return text
 }

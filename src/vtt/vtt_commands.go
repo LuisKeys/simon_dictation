@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func Commands(vtt *VTTService, cmd string) bool {
+func Commands(vtt *VTTService, cmd string) (bool, string) {
 	intcmd := strings.ToLower(cmd)
 	intcmd = clean(intcmd)
 	switch intcmd {
@@ -13,10 +13,12 @@ func Commands(vtt *VTTService, cmd string) bool {
 		vtt.SetLanguage("en")
 		log.Println("Language set to English")
 		Notification("Simon Dictate", "Language set to English")
+		return true, ""
 	case "spanish", "espanol":
 		vtt.SetLanguage("es")
 		log.Println("Language set to Spanish")
 		Notification("Simon Dictate", "Language set to Spanish")
+		return true, ""
 	case "auto":
 		if vtt.DictationEnabled {
 			vtt.DictationEnabled = false
@@ -27,11 +29,12 @@ func Commands(vtt *VTTService, cmd string) bool {
 			log.Println("Dictation enabled")
 			Notification("Simon Dictate", "Dictation enabled")
 		}
+		return true, ""
+	case "newline", "nuevalinea":
+		return true, "\n"
 	default:
-		return false
+		return false, ""
 	}
-
-	return true
 }
 
 func clean(cmd string) string {

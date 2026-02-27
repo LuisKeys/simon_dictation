@@ -40,6 +40,9 @@ type VTTService struct {
 
 	// Dictation status
 	DictationEnabled bool
+
+	// Track if last sent output was a newline to avoid leading space
+	lastSentNewline bool
 }
 
 func NewVTTSrv() (*VTTService, error) {
