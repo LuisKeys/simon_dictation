@@ -11,6 +11,7 @@ import (
 
 	"github.com/gen2brain/beeep"
 	"github.com/gordonklaus/portaudio"
+	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
 )
 
@@ -46,6 +47,9 @@ type VTTService struct {
 }
 
 func NewVTTSrv() (*VTTService, error) {
+	// Load .env file if present
+	_ = godotenv.Load()
+
 	// Initialize PortAudio
 	devnam := os.Getenv("VTT_INPUT_DEVICE")
 	err := portaudio.Initialize()
@@ -83,7 +87,10 @@ func NewVTTSrv() (*VTTService, error) {
 
 	// Load Whisper model
 	fmt.Println("Loading Whisper model...")
-	modelpth := "./vtt_models/ggml-base.bin"
+	modelpth := os.Getenv("MODEL")
+	if modelpth == "" {
+		modelpth = "./vtt_models/ggml-base.bin"
+	}
 	service.whisperModel = NewWhisperModel(modelpth)
 	fmt.Println("Whisper model loaded successfully")
 

@@ -1,11 +1,8 @@
 package input
 
-import (
-	"os/exec"
-)
-
-// Send types the given text into the currently focused input using xdotool,
-// which correctly handles UTF-8 characters including accented letters.
+// Send enqueues the given text to be typed asynchronously by the internal
+// serialized sender. For a blocking send (wait until typing finishes) use
+// `SendSync` from this package.
 func Send(text string) {
-	exec.Command("xdotool", "type", "--clearmodifiers", "--delay", "10", "--", text).Run()
+	Enqueue(text)
 }

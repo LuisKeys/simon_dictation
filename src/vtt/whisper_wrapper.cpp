@@ -1,6 +1,6 @@
 // whisper_wrapper.cpp
 #include "whisper_wrapper.h"
-#include "/home/lucho/projects/ai/whisper.cpp/build/install/include/whisper.h" // Full path to whisper.h
+#include <whisper.h>
 #include <string>
 #include <cstdlib>
 #include <cstring>

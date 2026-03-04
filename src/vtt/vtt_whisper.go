@@ -1,8 +1,9 @@
 package vtt
 
 /*
-#cgo CFLAGS: -I${SRCDIR} -I/home/lucho/projects/ai/whisper.cpp/build/install/include
-#cgo LDFLAGS: -L${SRCDIR} -L/home/lucho/projects/ai/whisper.cpp/build/install/lib -lwhisper_wrapper -lwhisper -lggml -lggml-base -lggml-cpu -lstdc++ -lm -pthread -lgomp
+#cgo CFLAGS: -I${SRCDIR}
+#cgo pkg-config: whisper
+#cgo LDFLAGS: -L${SRCDIR} -lwhisper_wrapper -lstdc++
 
 #include <stdlib.h>
 #include "whisper_wrapper.h"

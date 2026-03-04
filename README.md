@@ -20,6 +20,27 @@ sudo apt install libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-d
 apt-get install xdotool
 ```
 
+Whisper dependencies are resolved via `pkg-config` (`whisper` package), so you must build/install `whisper.cpp` first.
+
+```bash
+sudo apt install -y cmake build-essential pkg-config
+```
+
+If you want GPU acceleration (recommended for large models):
+
+```bash
+cd /home/lucho/projects/ai/whisper.cpp
+cmake -B build -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+sudo cmake --install build
+```
+
+If `pkg-config --cflags --libs whisper` does not work, export `PKG_CONFIG_PATH`:
+
+```bash
+export PKG_CONFIG_PATH=/home/lucho/projects/ai/whisper.cpp/build/install/lib/pkgconfig:$PKG_CONFIG_PATH
+```
+
 ## Installation
 
 ```bash
@@ -31,8 +52,11 @@ mkdir vtt_models
 # Pull ggml-base.bin file from https://huggingface.co/ggerganov/whisper.cpp/tree/main
 # Copy that file inside vtt_models
 
+# Verify whisper package metadata is visible
+pkg-config --cflags --libs whisper
+
 # Build the app
-go build /main.go
+go build main.go
 ```
 
 ## Usage
@@ -40,6 +64,13 @@ go build /main.go
 ```bash
 ./main
 ```
+
+## Troubleshooting
+
+- Error `fatal error: whisper.h: No such file or directory`
+	- `whisper.cpp` is not installed (or not installed where `pkg-config` can find it)
+	- check: `pkg-config --cflags --libs whisper`
+	- if needed, set `PKG_CONFIG_PATH` as shown above and rebuild
 
 ## License
 

@@ -137,7 +137,8 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			iscmd, cmdText := Commands(vtt, text)
 			if iscmd {
 				if cmdText != "" {
-					input.Send(cmdText)
+					// Use blocking send for commands to ensure ordering with state updates
+					_ = input.SendSync(cmdText)
 					vtt.mutex.Lock()
 					if cmdText == "\n" {
 						vtt.lastSentNewline = true
