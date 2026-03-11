@@ -75,3 +75,29 @@ go build main.go
 ## License
 
 MIT License
+
+## Hotkey / Mute shortcut
+
+This project includes a small local control HTTP endpoint to toggle the app-level dictation (not system microphone). The endpoint listens on `127.0.0.1:8765` and exposes:
+
+- `POST /toggle-mute` — toggles dictation on/off
+- `GET /status` — returns current dictation state as JSON
+
+Quick setup using `xbindkeys` (recommended):
+
+1. Make sure the app is running (`./main`).
+2. Copy `tools/toggle-mute.sh` somewhere and make it executable:
+
+```bash
+chmod +x tools/toggle-mute.sh
+```
+
+3. Install and configure `xbindkeys` (`sudo apt install xbindkeys`). Add an entry to `~/.xbindkeysrc` (see `tools/xbindkeys.example`) mapping `Alt+Ctrl+Shift+M` to run the script.
+
+4. Start `xbindkeys`:
+
+```bash
+xbindkeys
+```
+
+Press `Alt+Ctrl+Shift+M` to toggle dictation. A desktop notification will show the new state.

@@ -24,7 +24,7 @@ func Init() *VTTService {
 }
 
 func (vtt *VTTService) Run() {
-	vtt.DictationEnabled = true
+	vtt.SetDictation(true)
 	vtt.AudioData = make(chan []float32, 8)
 	err := vtt.stream.Start()
 
@@ -151,7 +151,7 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 					vtt.lastSentNewline = false
 					vtt.mutex.Unlock()
 				}
-			} else if vtt.DictationEnabled {
+			} else if vtt.GetDictation() {
 				vtt.mutex.Lock()
 				sendText := text
 				if !vtt.lastSentNewline {

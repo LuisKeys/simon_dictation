@@ -198,3 +198,25 @@ func (vtt *VTTService) GetLanguage() string {
 	defer vtt.mutex.RUnlock()
 	return vtt.language
 }
+
+// SetDictation sets the dictation (mute) state in a thread-safe manner.
+func (vtt *VTTService) SetDictation(enabled bool) {
+	vtt.mutex.Lock()
+	defer vtt.mutex.Unlock()
+	vtt.DictationEnabled = enabled
+}
+
+// GetDictation returns the current dictation (mute) state in a thread-safe manner.
+func (vtt *VTTService) GetDictation() bool {
+	vtt.mutex.RLock()
+	defer vtt.mutex.RUnlock()
+	return vtt.DictationEnabled
+}
+
+// ToggleDictation flips the dictation state and returns the new state.
+func (vtt *VTTService) ToggleDictation() bool {
+	vtt.mutex.Lock()
+	defer vtt.mutex.Unlock()
+	vtt.DictationEnabled = !vtt.DictationEnabled
+	return vtt.DictationEnabled
+}

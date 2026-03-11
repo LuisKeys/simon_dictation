@@ -1,0 +1,6 @@
+# Example .xbindkeysrc entry to bind Alt+Ctrl+Shift+M to toggle-mute.sh
+# Install xbindkeys (sudo apt install xbindkeys) and place this in ~/.xbindkeysrc
+
+# Alt+Ctrl+Shift+M
+"bash /path/to/simon_dictate/tools/toggle-mute.sh"
+    Alt+Ctrl+Shift + m
