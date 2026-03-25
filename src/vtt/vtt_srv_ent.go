@@ -15,6 +15,56 @@ import (
 	"github.com/pkg/errors"
 )
 
+type biquadFilter struct {
+	b0, b1, b2 float64
+	a1, a2     float64
+	z1, z2     float64
+}
+
+func newVoiceBandpassFilter(sampleRate, lowHz, highHz float64) *biquadFilter {
+	if lowHz <= 0 {
+		lowHz = 300
+	}
+	if highHz <= lowHz {
+		highHz = lowHz * 2
+	}
+	center := math.Sqrt(lowHz * highHz)
+	bandwidth := highHz - lowHz
+	if bandwidth <= 0 {
+		bandwidth = center
+	}
+	q := center / bandwidth
+	if q <= 0 {
+		q = 0.5
+	}
+	omega := 2 * math.Pi * center / sampleRate
+	alpha := math.Sin(omega) / (2 * q)
+	cosw := math.Cos(omega)
+	b0 := alpha
+	b1 := 0.0
+	b2 := -alpha
+	a0 := 1 + alpha
+	a1 := -2 * cosw
+	a2 := 1 - alpha
+	return &biquadFilter{
+		b0: b0 / a0,
+		b1: b1 / a0,
+		b2: b2 / a0,
+		a1: a1 / a0,
+		a2: a2 / a0,
+	}
+}
+
+func (f *biquadFilter) Process(samples []float32) {
+	for i := range samples {
+		input := float64(samples[i])
+		output := f.b0*input + f.z1
+		f.z1 = f.b1*input + f.z2 - f.a1*output
+		f.z2 = f.b2*input - f.a2*output
+		samples[i] = float32(output)
+	}
+}
+
 type VTTService struct {
 	// Audio configuration
 	rate      float64
@@ -25,6 +75,9 @@ type VTTService struct {
 	// PortAudio
 	stream      *portaudio.Stream
 	inputDevice *portaudio.DeviceInfo
+
+	// Voice bandpass filter (300-3400 Hz)
+	voiceFilter *biquadFilter
 
 	// Whisper model
 	whisperModel *WhisperModel
@@ -76,6 +129,7 @@ func NewVTTSrv() (*VTTService, error) {
 		stopChan:           make(chan struct{}),
 		noiseGateThreshold: noiseGate,
 	}
+	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 
 	// Find input device
 
@@ -157,6 +211,8 @@ func (vtt *VTTService) Shutdown() {
 func (vtt *VTTService) processAudio(in []float32) {
 	vtt.mutex.Lock()
 	defer vtt.mutex.Unlock()
+
+	vtt.voiceFilter.Process(in)
 
 	select {
 	case vtt.AudioData <- in:
