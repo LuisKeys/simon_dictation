@@ -98,6 +98,10 @@ type VTTService struct {
 	// Minimum speech buffer duration in milliseconds before dispatch (0 = disabled)
 	minSpeechMs int
 
+	// Minimum normalized autocorrelation in pitch range (80-400 Hz) to consider a frame as voice.
+	// Breathing/sighs score near 0, voice scores 0.3+. (0 = disabled)
+	periodicityMin float64
+
 	// Dictation status
 	DictationEnabled bool
 
@@ -149,6 +153,17 @@ func NewVTTSrv() (*VTTService, error) {
 		}
 	}
 
+	// Read periodicity threshold from environment variable
+	periodicityMin := 0.25
+	if val := os.Getenv("VTT_PERIODICITY_MIN"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 64); err == nil {
+			periodicityMin = parsed
+			fmt.Printf("Periodicity minimum set to: %f\n", periodicityMin)
+		} else {
+			log.Printf("Warning: invalid VTT_PERIODICITY_MIN value %q, using default 0.25", val)
+		}
+	}
+
 	service := &VTTService{
 		rate:               16000,
 		chunkSize:          2048,
@@ -158,6 +173,7 @@ func NewVTTSrv() (*VTTService, error) {
 		noiseGateThreshold: noiseGate,
 		crestFactorMax:     crestFactorMax,
 		minSpeechMs:        minSpeechMs,
+		periodicityMin:     periodicityMin,
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 
@@ -356,4 +372,55 @@ func (vtt *VTTService) isTransient(frame []float32) bool {
 		}
 	}
 	return false
+}
+
+// computePeriodicity computes normalized autocorrelation in the pitch range (80-400 Hz).
+// Voice has periodic structure and scores 0.3+. Breathing/sighs are aperiodic and score ~0.0-0.2.
+func computePeriodicity(samples []float32, sampleRate int) float64 {
+	if len(samples) == 0 {
+		return 0
+	}
+
+	// Compute lag-0 autocorrelation (power)
+	var r0 float64
+	for _, s := range samples {
+		v := float64(s)
+		r0 += v * v
+	}
+	if r0 == 0 {
+		return 0
+	}
+
+	// Pitch range: 80-400 Hz. At 16kHz:
+	// 400 Hz → period = 16000/400 = 40 samples (min lag)
+	// 80 Hz → period = 16000/80 = 200 samples (max lag)
+	minLag := sampleRate / 400
+	maxLag := sampleRate / 80
+	if maxLag >= len(samples) {
+		maxLag = len(samples) - 1
+	}
+
+	// Find maximum autocorrelation in pitch range
+	maxR := 0.0
+	for lag := minLag; lag <= maxLag; lag++ {
+		var r float64
+		for i := 0; i < len(samples)-lag; i++ {
+			r += float64(samples[i]) * float64(samples[i+lag])
+		}
+		normalized := r / r0
+		if normalized > maxR {
+			maxR = normalized
+		}
+	}
+	return maxR
+}
+
+// isAperiodic returns true if the frame lacks pitch periodicity (breathing, sighs, etc).
+// Uses autocorrelation-based periodicity detection.
+func (vtt *VTTService) isAperiodic(frame []float32) bool {
+	if vtt.periodicityMin <= 0 {
+		return false
+	}
+	periodicity := computePeriodicity(frame, int(vtt.rate))
+	return periodicity < vtt.periodicityMin
 }

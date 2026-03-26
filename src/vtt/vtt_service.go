@@ -98,7 +98,7 @@ func (vtt *VTTService) Listen() {
 			gated := vtt.noiseGateThreshold > 0 && rms < float64(vtt.noiseGateThreshold)
 
 			now := time.Now()
-			isVoiceActive := !collectingNoise && !gated && rms > silenceThreshold && !vtt.isTransient(frame)
+			isVoiceActive := !collectingNoise && !gated && rms > silenceThreshold && !vtt.isTransient(frame) && !vtt.isAperiodic(frame)
 			if isVoiceActive {
 				speaking = true
 				lastSoundTime = now
