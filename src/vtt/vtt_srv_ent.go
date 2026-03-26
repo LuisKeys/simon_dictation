@@ -92,6 +92,12 @@ type VTTService struct {
 	// Noise gate: minimum RMS level to allow audio into the VAD pipeline (0 = disabled)
 	noiseGateThreshold float32
 
+	// Crest factor threshold: frames with peak/RMS above this are percussive transients (0 = disabled)
+	crestFactorMax float64
+
+	// Minimum speech buffer duration in milliseconds before dispatch (0 = disabled)
+	minSpeechMs int
+
 	// Dictation status
 	DictationEnabled bool
 
@@ -121,6 +127,28 @@ func NewVTTSrv() (*VTTService, error) {
 		}
 	}
 
+	// Read crest factor max from environment variable
+	crestFactorMax := 8.0
+	if val := os.Getenv("VTT_CREST_FACTOR_MAX"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 64); err == nil {
+			crestFactorMax = parsed
+			fmt.Printf("Crest factor max set to: %f\n", crestFactorMax)
+		} else {
+			log.Printf("Warning: invalid VTT_CREST_FACTOR_MAX value %q, using default 8.0", val)
+		}
+	}
+
+	// Read minimum speech duration from environment variable
+	minSpeechMs := 300
+	if val := os.Getenv("VTT_MIN_SPEECH_MS"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			minSpeechMs = parsed
+			fmt.Printf("Minimum speech duration set to: %d ms\n", minSpeechMs)
+		} else {
+			log.Printf("Warning: invalid VTT_MIN_SPEECH_MS value %q, using default 300ms", val)
+		}
+	}
+
 	service := &VTTService{
 		rate:               16000,
 		chunkSize:          2048,
@@ -128,6 +156,8 @@ func NewVTTSrv() (*VTTService, error) {
 		language:           "es",
 		stopChan:           make(chan struct{}),
 		noiseGateThreshold: noiseGate,
+		crestFactorMax:     crestFactorMax,
+		minSpeechMs:        minSpeechMs,
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 
@@ -275,4 +305,55 @@ func (vtt *VTTService) ToggleDictation() bool {
 	defer vtt.mutex.Unlock()
 	vtt.DictationEnabled = !vtt.DictationEnabled
 	return vtt.DictationEnabled
+}
+
+// computeCrestFactor returns peak absolute value / RMS for the samples.
+// Returns 0 if RMS is zero.
+func computeCrestFactor(samples []float32) float64 {
+	var sumSq float64
+	var peak float64
+	for _, s := range samples {
+		v := float64(s)
+		sumSq += v * v
+		if abs := math.Abs(v); abs > peak {
+			peak = abs
+		}
+	}
+	rms := math.Sqrt(sumSq / float64(len(samples)))
+	if rms == 0 {
+		return 0
+	}
+	return peak / rms
+}
+
+// computeZCR returns the zero crossing rate: number of sign changes divided by (len-1).
+// Returns a value in [0, 1].
+func computeZCR(samples []float32) float64 {
+	if len(samples) < 2 {
+		return 0
+	}
+	crossings := 0
+	for i := 1; i < len(samples); i++ {
+		if (samples[i] >= 0) != (samples[i-1] >= 0) {
+			crossings++
+		}
+	}
+	return float64(crossings) / float64(len(samples)-1)
+}
+
+// isTransient returns true if the frame is a percussive transient (not voice).
+// Uses crest factor as primary signal and ZCR as corroboration.
+func (vtt *VTTService) isTransient(frame []float32) bool {
+	if vtt.crestFactorMax <= 0 {
+		return false
+	}
+	cf := computeCrestFactor(frame)
+	if cf > vtt.crestFactorMax {
+		zcr := computeZCR(frame)
+		// High ZCR corroborates broadband transient; low ZCR may be a loud voiced consonant
+		if zcr > 0.3 {
+			return true
+		}
+	}
+	return false
 }

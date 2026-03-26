@@ -98,7 +98,8 @@ func (vtt *VTTService) Listen() {
 			gated := vtt.noiseGateThreshold > 0 && rms < float64(vtt.noiseGateThreshold)
 
 			now := time.Now()
-			if !gated && rms > silenceThreshold {
+			isVoiceActive := !collectingNoise && !gated && rms > silenceThreshold && !vtt.isTransient(frame)
+			if isVoiceActive {
 				speaking = true
 				lastSoundTime = now
 				buffer = append(buffer, frame...)
@@ -123,6 +124,12 @@ func (vtt *VTTService) Listen() {
 func (vtt *VTTService) dispatch(audioData []float32) {
 	if len(audioData) == 0 {
 		return
+	}
+	if vtt.minSpeechMs > 0 {
+		minSamples := vtt.minSpeechMs * 16 // 16000 Hz / 1000 ms
+		if len(audioData) < minSamples {
+			return
+		}
 	}
 	lang := vtt.GetLanguage()
 	go func(data []float32, lang string) {
