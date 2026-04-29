@@ -1,7 +1,6 @@
 package input
 
 import (
-	"fmt"
 	"log"
 	"os/exec"
 	"time"
@@ -13,7 +12,7 @@ type sendRequest struct {
 }
 
 var sendQueue chan sendRequest
-var keyDelay = "0"
+var keyDelay = "0" // delay in milliseconds between keystrokes, can be set via environment variable
 
 func init() {
 	sendQueue = make(chan sendRequest, 128)
@@ -45,10 +44,7 @@ func senderLoop() {
 
 func runXDoTool(text string) error {
 	log.Printf("typing: %q", text)
-	cmd := exec.Command("bash", "-c", fmt.Sprintf(
-		`printf %q | xclip -selection clipboard && xdotool key --clearmodifiers Ctrl+v`,
-		text,
-	))
+	cmd := exec.Command("xdotool", "type", "--clearmodifiers", "--delay", keyDelay, "--", text)
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("xdotool error: %v", err)
