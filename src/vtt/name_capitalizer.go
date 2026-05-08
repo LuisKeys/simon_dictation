@@ -97,7 +97,7 @@ func (nc *NameCapitalizer) reloadLocked() error {
 func (nc *NameCapitalizer) AddFullName(name string) error {
 	norm := normalizeText(name)
 	parts := extractWordKeys(norm)
-	if len(parts) < 2 {
+	if len(parts) == 0 {
 		return nil
 	}
 
@@ -227,7 +227,7 @@ func (nc *NameCapitalizer) loadFullNames(path string) {
 			continue
 		}
 		parts := extractWordKeys(normLine)
-		if len(parts) < 2 {
+		if len(parts) == 0 {
 			continue
 		}
 		nc.fullNames[strings.Join(parts, " ")] = struct{}{}
@@ -274,7 +274,7 @@ func (nc *NameCapitalizer) Apply(text string) string {
 		if markCap[i] {
 			continue
 		}
-		for w := 4; w >= 2; w-- {
+		for w := 4; w >= 1; w-- {
 			if i+w > len(wordTokenIndexes) {
 				continue
 			}

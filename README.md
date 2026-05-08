@@ -11,9 +11,9 @@ A voice dictation tool for converting speech to text for linux.
 "English" : Turn to English mode
 "Spanish" : Turn to Spanish mode
 "Auto" : Switch between mute and unmute
-"Agregar nombre <Nombre Apellido>" : Add a full name to the capitalization dictionary
-"Quitar nombre <Nombre Apellido>" : Remove a full name from the capitalization dictionary
-"Recargar nombres" : Reload dictionary files from disk
+"Agregar nombre <Nombre>" / "Add name <Name>" : Add a name to the capitalization dictionary (single-word or full name)
+"Quitar nombre <Nombre>" / "Remove name <Name>" / "Delete name <Name>" : Remove a name from the capitalization dictionary
+"Recargar nombres" / "Recarga nombres" / "Reload names" : Reload dictionary files from disk
 
 ## Requirements
 
