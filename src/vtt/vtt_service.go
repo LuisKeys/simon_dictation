@@ -139,6 +139,9 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			return
 		}
 		text = normalizeText(text)
+		if vtt.nameCapitalizer != nil {
+			text = vtt.nameCapitalizer.Apply(text)
+		}
 		if text != "" {
 			log.Printf("Transcribed text: %s", text)
 			iscmd, cmdText := Commands(vtt, text)
@@ -175,15 +178,12 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 
 func normalizeText(text string) string {
 	text = strings.TrimSpace(text)
+	text = lowerFirstLetter(text)
 	text = strings.ReplaceAll(text, ".", "")
-	if len(text) > 0 {
-		runes := []rune(text)
-		runes[0] = unicode.ToLower(runes[0])
-		text = string(runes)
-	}
 
 	text = strings.Map(func(r rune) rune {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == ' ' ||
+			r == '-' || r == '\'' ||
 			r == 'á' || r == 'é' || r == 'í' || r == 'ó' || r == 'ú' || r == 'ü' || r == 'ñ' ||
 			r == 'Á' || r == 'É' || r == 'Í' || r == 'Ó' || r == 'Ú' || r == 'Ü' || r == 'Ñ' {
 			return r
@@ -191,15 +191,43 @@ func normalizeText(text string) string {
 		return -1
 	}, text)
 
-	text = strings.ReplaceAll(strings.ToLower(text), "music", "")
-	text = strings.ReplaceAll(strings.ToLower(text), "coughing", "")
-	text = strings.ReplaceAll(strings.ToLower(text), "laughing", "")
-
-	text = strings.ReplaceAll(strings.ToLower(text), "música", "")
-	text = strings.ReplaceAll(strings.ToLower(text), "risas", "")
-	text = strings.ReplaceAll(strings.ToLower(text), "risa", "")
-	text = strings.ReplaceAll(strings.ToLower(text), "tos", "")
+	text = removeNoiseWords(text)
 
 	text = strings.TrimSpace(text)
 	return text
+}
+
+func lowerFirstLetter(text string) string {
+	runes := []rune(text)
+	for i := 0; i < len(runes); i++ {
+		if unicode.IsLetter(runes[i]) {
+			runes[i] = unicode.ToLower(runes[i])
+			return string(runes)
+		}
+	}
+	return text
+}
+
+func removeNoiseWords(text string) string {
+	noise := map[string]struct{}{
+		"music": {}, "coughing": {}, "laughing": {},
+		"musica": {}, "música": {}, "risas": {}, "risa": {}, "tos": {},
+	}
+
+	tokens := tokenizeText(text)
+	if len(tokens) == 0 {
+		return text
+	}
+
+	var b strings.Builder
+	b.Grow(len(text))
+	for _, t := range tokens {
+		if t.kind == tokenWord {
+			if _, drop := noise[normalizeKey(t.text)]; drop {
+				continue
+			}
+		}
+		b.WriteString(t.text)
+	}
+	return b.String()
 }

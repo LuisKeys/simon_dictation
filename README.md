@@ -11,6 +11,9 @@ A voice dictation tool for converting speech to text for linux.
 "English" : Turn to English mode
 "Spanish" : Turn to Spanish mode
 "Auto" : Switch between mute and unmute
+"Agregar nombre <Nombre Apellido>" : Add a full name to the capitalization dictionary
+"Quitar nombre <Nombre Apellido>" : Remove a full name from the capitalization dictionary
+"Recargar nombres" : Reload dictionary files from disk
 
 ## Requirements
 
@@ -101,3 +104,19 @@ xbindkeys
 ```
 
 Press `Alt+Ctrl+Shift+M` to toggle dictation. A desktop notification will show the new state.
+
+## Proper Name Capitalization
+
+The dictation pipeline now applies a deterministic post-processing step to capitalize person names.
+
+Dictionary files (default path `./vtt_models`, override with `VTT_NAMES_DIR`):
+
+- `names_full.txt`: full names, one per line (highest-priority matching)
+- `names_first.txt`: optional first names, one per line
+- `names_last.txt`: optional last names, one per line
+- `names_exceptions.txt`: ambiguous words to keep lowercase by default
+
+Notes:
+
+- Full-name matches are prioritized over exceptions.
+- Names can also be added/removed live with voice commands.

@@ -6,6 +6,44 @@ import (
 )
 
 func Commands(vtt *VTTService, cmd string) (bool, string) {
+	raw := strings.TrimSpace(cmd)
+	rawLower := strings.ToLower(raw)
+
+	if strings.HasPrefix(rawLower, "agregar nombre ") {
+		name := strings.TrimSpace(raw[len("agregar nombre "):])
+		if vtt.nameCapitalizer != nil && name != "" {
+			if err := vtt.nameCapitalizer.AddFullName(name); err != nil {
+				log.Printf("error adding name: %v", err)
+				return true, ""
+			}
+			Notification("Simon Dictate", "Nombre agregado")
+		}
+		return true, ""
+	}
+
+	if strings.HasPrefix(rawLower, "quitar nombre ") {
+		name := strings.TrimSpace(raw[len("quitar nombre "):])
+		if vtt.nameCapitalizer != nil && name != "" {
+			if err := vtt.nameCapitalizer.RemoveFullName(name); err != nil {
+				log.Printf("error removing name: %v", err)
+				return true, ""
+			}
+			Notification("Simon Dictate", "Nombre eliminado")
+		}
+		return true, ""
+	}
+
+	if rawLower == "recargar nombres" {
+		if vtt.nameCapitalizer != nil {
+			if err := vtt.nameCapitalizer.Reload(); err != nil {
+				log.Printf("error reloading names: %v", err)
+				return true, ""
+			}
+			Notification("Simon Dictate", "Diccionario de nombres recargado")
+		}
+		return true, ""
+	}
+
 	intcmd := strings.ToLower(cmd)
 	intcmd = clean(intcmd)
 	switch intcmd {

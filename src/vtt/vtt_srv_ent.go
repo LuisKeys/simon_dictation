@@ -107,6 +107,9 @@ type VTTService struct {
 
 	// Track if last sent output was a newline to avoid leading space
 	lastSentNewline bool
+
+	// Capitalization rules for proper names.
+	nameCapitalizer *NameCapitalizer
 }
 
 func NewVTTSrv() (*VTTService, error) {
@@ -174,6 +177,7 @@ func NewVTTSrv() (*VTTService, error) {
 		crestFactorMax:     crestFactorMax,
 		minSpeechMs:        minSpeechMs,
 		periodicityMin:     periodicityMin,
+		nameCapitalizer:    NewNameCapitalizer(),
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 
