@@ -110,6 +110,9 @@ type VTTService struct {
 
 	// Capitalization rules for proper names.
 	nameCapitalizer *NameCapitalizer
+
+	// Filter for recurring known Whisper artifacts.
+	knownTextFilter *KnownTextFilter
 }
 
 func NewVTTSrv() (*VTTService, error) {
@@ -178,6 +181,7 @@ func NewVTTSrv() (*VTTService, error) {
 		minSpeechMs:        minSpeechMs,
 		periodicityMin:     periodicityMin,
 		nameCapitalizer:    NewNameCapitalizer(),
+		knownTextFilter:    NewKnownTextFilter(),
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 

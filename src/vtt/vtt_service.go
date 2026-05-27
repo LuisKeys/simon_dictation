@@ -139,6 +139,13 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			return
 		}
 		text = normalizeText(text)
+		if vtt.knownTextFilter != nil {
+			filtered := vtt.knownTextFilter.Apply(text)
+			if filtered == "" && text != "" {
+				log.Printf("filtered known whisper artifact: %q", text)
+			}
+			text = filtered
+		}
 		if vtt.nameCapitalizer != nil {
 			text = vtt.nameCapitalizer.Apply(text)
 		}
