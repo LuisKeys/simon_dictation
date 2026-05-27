@@ -74,6 +74,24 @@ func (f *KnownTextFilter) Apply(text string) string {
 		}
 	}
 
+	// Keep only one consecutive "gracias" token (e.g. "gracias gracias").
+	lastKeptWordKey := ""
+	for i, t := range tokens {
+		if dropToken[i] {
+			continue
+		}
+		switch t.kind {
+		case tokenWord:
+			if t.key == "gracias" && lastKeptWordKey == "gracias" {
+				dropToken[i] = true
+				continue
+			}
+			lastKeptWordKey = t.key
+		case tokenPunct:
+			lastKeptWordKey = ""
+		}
+	}
+
 	var b strings.Builder
 	b.Grow(len(text))
 	lastWasSpace := true
