@@ -70,6 +70,14 @@ func (vtt *VTTService) Listen() {
 				return
 			}
 
+			// Si está silenciado, no enviamos audio al modelo: drenamos el canal,
+			// descartamos cualquier buffer acumulado y no despachamos a Whisper.
+			if !vtt.GetDictation() {
+				buffer = nil
+				speaking = false
+				continue
+			}
+
 			var sum float64
 			for _, s := range frame {
 				sum += float64(s * s)
@@ -168,7 +176,10 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 					vtt.lastSentNewline = false
 					vtt.mutex.Unlock()
 				}
-			} else if vtt.GetDictation() {
+			} else {
+				// dispatch() solo se ejecuta con dictado activo (Listen descarta
+				// el audio mientras está silenciado), por lo que aquí ya sabemos
+				// que el texto debe enviarse.
 				vtt.mutex.Lock()
 				sendText := text
 				if !vtt.lastSentNewline {
