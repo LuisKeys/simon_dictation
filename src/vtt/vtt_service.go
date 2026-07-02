@@ -157,6 +157,9 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 		if vtt.nameCapitalizer != nil {
 			text = vtt.nameCapitalizer.Apply(text)
 		}
+		if vtt.textReplacer != nil {
+			text = vtt.textReplacer.Apply(text)
+		}
 		if text != "" {
 			log.Printf("Transcribed text: %s", text)
 			iscmd, cmdText := Commands(vtt, text)

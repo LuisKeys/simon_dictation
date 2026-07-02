@@ -113,6 +113,9 @@ type VTTService struct {
 
 	// Filter for recurring known Whisper artifacts.
 	knownTextFilter *KnownTextFilter
+
+	// Canonical rewrites for frequently misheard words (e.g. brand names).
+	textReplacer *TextReplacer
 }
 
 func NewVTTSrv() (*VTTService, error) {
@@ -182,6 +185,7 @@ func NewVTTSrv() (*VTTService, error) {
 		periodicityMin:     periodicityMin,
 		nameCapitalizer:    NewNameCapitalizer(),
 		knownTextFilter:    NewKnownTextFilter(),
+		textReplacer:       NewTextReplacer(),
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 
