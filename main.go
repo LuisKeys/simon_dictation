@@ -1,14 +1,11 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
-	"sync"
 	"syscall"
 
 	"github.com/joho/godotenv"
@@ -56,48 +53,10 @@ func main() {
 		gracefulShutdownFor(vttsrv)
 	}()
 
-	if runtime.GOOS == "darwin" {
-		// macOS: no HTTP server. Toggle/exit are driven by a small floating
-		// control window. The audio pipeline runs on a goroutine while the
-		// main goroutine is reserved for the Cocoa run loop.
-		go vttsrv.Run()
-		runControlUI(vttsrv) // blocks forever; process exits via os.Exit
-		return
-	}
-
-	// Linux: local control HTTP server for toggle/status endpoints.
-	http.HandleFunc("/toggle-mute", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "use POST", http.StatusMethodNotAllowed)
-			return
-		}
-		newState := toggleDictation(vttsrv)
-		resp := map[string]bool{"dictation_enabled": newState}
-		_ = json.NewEncoder(w).Encode(resp)
-	})
-
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "use GET", http.StatusMethodNotAllowed)
-			return
-		}
-		resp := map[string]bool{"dictation_enabled": vttsrv.GetDictation()}
-		_ = json.NewEncoder(w).Encode(resp)
-	})
-
-	go func() {
-		log.Println("Control endpoint listening on 127.0.0.1:8765")
-		if err := http.ListenAndServe("127.0.0.1:8765", nil); err != nil {
-			log.Fatalf("Control server error: %v", err)
-		}
-	}()
-
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		vttsrv.Run()
-	}()
-
-	wg.Wait()
+	// Both macOS and Linux drive mute/language/exit from a small native floating
+	// control window (gui_darwin.* / gui_linux.*). The audio pipeline runs on a
+	// goroutine while the main goroutine is reserved for the platform run loop
+	// (Cocoa's [NSApp run] / GTK's gtk_main), which must own the main OS thread.
+	go vttsrv.Run()
+	runControlUI(vttsrv) // blocks forever; process exits via os.Exit
 }

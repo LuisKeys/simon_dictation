@@ -21,7 +21,7 @@ A voice dictation tool for converting speech to text. Supports Linux (X11) and m
 
 ```bash
 sudo apt update
-sudo apt install libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev
+sudo apt install libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev libgtk-3-dev
 apt-get install xdotool
 ```
 
@@ -140,46 +140,15 @@ go build -o main .
 
 MIT License
 
-## Hotkey / Mute shortcut
+## Control window
 
-On Linux this project includes a small local control HTTP endpoint to toggle the app-level dictation (not system microphone). The endpoint listens on `127.0.0.1:8765` and exposes:
+On both Linux and macOS, when you run `./main` a small floating control window titled **Simon** appears near the top-right corner of the screen. It stays on top of other windows and has three buttons:
 
-- `POST /toggle-mute` — toggles dictation on/off
-- `GET /status` — returns current dictation state as JSON
+- **Mute** — toggles dictation on/off (a desktop notification shows the new state). The label reflects button clicks (Mute ↔ Muted); toggling via the "auto" voice command does not update it.
+- **EN / ES** — toggles the recognition language between English and Spanish (a desktop notification shows the new language).
+- **Exit** — shuts the app down cleanly (closes the audio stream and Whisper model, releases the pidfile). Closing the window has the same effect.
 
-On macOS there is no HTTP endpoint and no keyboard shortcut: a small floating control window handles muting and quitting (see the macOS section below).
-
-### Linux
-
-Quick setup using `xbindkeys` (recommended):
-
-1. Make sure the app is running (`./main`).
-2. Copy `tools/toggle-mute.sh` somewhere and make it executable:
-
-```bash
-chmod +x tools/toggle-mute.sh
-```
-
-3. Install and configure `xbindkeys` (`sudo apt install xbindkeys`). Add an entry to `~/.xbindkeysrc` (see `tools/xbindkeys.example`) mapping `Alt+Ctrl+Shift+M` to run the script.
-
-4. Start `xbindkeys`:
-
-```bash
-xbindkeys
-```
-
-Press `Alt+Ctrl+Shift+M` to toggle dictation. A desktop notification will show the new state.
-
-`supervisor.sh` launches and manages `xbindkeys` automatically alongside `./main` on Linux.
-
-### macOS
-
-No hotkey or `skhd` setup is needed. When you run `./main`, a small floating window titled **Simon** appears near the top-right corner of the screen. It stays on top of other windows and can be dragged by its title bar. It has two buttons:
-
-- **Mute** — toggles dictation on/off (a desktop notification shows the new state). The label reflects button clicks; toggling via the "auto" voice command does not update it.
-- **Exit** — shuts the app down cleanly (closes the audio stream and Whisper model, releases the pidfile).
-
-The app runs as an accessory (no Dock icon, no menu bar). Since there is no HTTP endpoint on macOS, `tools/toggle-mute.sh` is Linux-only.
+There is no HTTP endpoint and no external hotkey daemon — control is entirely through this window. On Linux it is a GTK3 window (`gui_linux.*`); on macOS an AppKit window (`gui_darwin.*`) that runs as an accessory (no Dock icon, no menu bar).
 
 `supervisor.sh` is Linux-only and will refuse to run on macOS — on macOS, just run `./main` directly. There's no crash-restart supervision on macOS; if it crashes, restart it manually.
 

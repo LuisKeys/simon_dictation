@@ -5,17 +5,12 @@ if [[ "$(uname)" == "Darwin" ]]; then
     exit 1
 fi
 
-XBIND_PID=""
 MAIN_PID=""
-if [[ "$(uname)" == "Linux" ]]; then
-    xbindkeys &
-    XBIND_PID=$!
-fi
-# On macOS, the global hotkey is handled by skhd running as its own
-# `brew services` daemon (see tools/skhdrc.example) — nothing to launch here.
+# Mute/language/exit are driven by the app's own floating control window on
+# both Linux (GTK) and macOS (AppKit) — there is no external hotkey daemon to
+# launch here.
 
 cleanup() {
-    [[ -n "$XBIND_PID" ]] && kill "$XBIND_PID" 2>/dev/null
     [[ -n "$MAIN_PID" ]] && kill "$MAIN_PID" 2>/dev/null
     exit
 }
