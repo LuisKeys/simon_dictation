@@ -56,7 +56,7 @@ go build main.go
 ### macOS
 
 ```bash
-brew install portaudio pkg-config cmake skhd
+brew install portaudio pkg-config cmake
 ```
 
 Build `whisper.cpp` from source (Metal acceleration is enabled by default on Apple Silicon):
@@ -129,10 +129,12 @@ MIT License
 
 ## Hotkey / Mute shortcut
 
-This project includes a small local control HTTP endpoint to toggle the app-level dictation (not system microphone). The endpoint listens on `127.0.0.1:8765` and exposes:
+On Linux this project includes a small local control HTTP endpoint to toggle the app-level dictation (not system microphone). The endpoint listens on `127.0.0.1:8765` and exposes:
 
 - `POST /toggle-mute` — toggles dictation on/off
 - `GET /status` — returns current dictation state as JSON
+
+On macOS there is no HTTP endpoint and no keyboard shortcut: a small floating control window handles muting and quitting (see the macOS section below).
 
 ### Linux
 
@@ -159,24 +161,12 @@ Press `Alt+Ctrl+Shift+M` to toggle dictation. A desktop notification will show t
 
 ### macOS
 
-Quick setup using `skhd`:
+No hotkey or `skhd` setup is needed. When you run `./main`, a small floating window titled **Simon** appears near the top-right corner of the screen. It stays on top of other windows and can be dragged by its title bar. It has two buttons:
 
-1. Make sure the app is running (`./main`).
-2. Copy `tools/toggle-mute.sh` somewhere and make it executable:
+- **Mute** — toggles dictation on/off (a desktop notification shows the new state). The label reflects button clicks; toggling via the "auto" voice command does not update it.
+- **Exit** — shuts the app down cleanly (closes the audio stream and Whisper model, releases the pidfile).
 
-```bash
-chmod +x tools/toggle-mute.sh
-```
-
-3. Install `skhd` (`brew install skhd`). Add an entry to `~/.skhdrc` (see `tools/skhdrc.example`) mapping `Cmd+Ctrl+Shift+M` to run the script.
-
-4. Start `skhd` as a background service:
-
-```bash
-skhd --start-service
-```
-
-Press `Cmd+Ctrl+Shift+M` to toggle dictation. Unlike `xbindkeys` on Linux, `skhd` runs as its own persistent `brew services` daemon.
+The app runs as an accessory (no Dock icon, no menu bar). Since there is no HTTP endpoint on macOS, `tools/toggle-mute.sh` is Linux-only.
 
 `supervisor.sh` is Linux-only and will refuse to run on macOS — on macOS, just run `./main` directly. There's no crash-restart supervision on macOS; if it crashes, restart it manually.
 

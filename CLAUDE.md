@@ -18,7 +18,7 @@ There are no tests in this repo.
 
 ### Build prerequisites (cgo + whisper)
 
-The build links against whisper.cpp, resolved through `pkg-config` (`whisper` package). whisper.cpp must be built/installed first, or `go build` fails with `whisper.h: No such file or directory`. If pkg-config can't find it, set `PKG_CONFIG_PATH` to whisper.cpp's `pkgconfig` dir (see README). Linux system deps: `libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev xdotool cmake build-essential pkg-config`. macOS: `brew install portaudio pkg-config cmake skhd` plus whisper.cpp built from source (Metal acceleration via `-DGGML_METAL=ON`).
+The build links against whisper.cpp, resolved through `pkg-config` (`whisper` package). whisper.cpp must be built/installed first, or `go build` fails with `whisper.h: No such file or directory`. If pkg-config can't find it, set `PKG_CONFIG_PATH` to whisper.cpp's `pkgconfig` dir (see README). Linux system deps: `libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev xdotool cmake build-essential pkg-config`. macOS: `brew install portaudio pkg-config cmake` plus whisper.cpp built from source (Metal acceleration via `-DGGML_METAL=ON`). The macOS control window links `-framework Cocoa` (no extra install).
 
 `src/vtt/libwhisper_wrapper_linux.a` (Linux) / `src/vtt/libwhisper_wrapper_darwin.a` (macOS) are prebuilt archives of `whisper_wrapper.cpp`, selected by OS-conditional `#cgo linux`/`#cgo darwin` LDFLAGS directives in `vtt_whisper.go` (`-lstdc++` on Linux, `-lc++` on macOS). Neither is checked into git (`*.a` is gitignored) — run `src/vtt/build_wrapper.sh` to build the one for your OS before `go build`. If you change `whisper_wrapper.cpp` or `.h`, rerun that script — plain `go build` will not rebuild the archive.
 
@@ -27,7 +27,7 @@ A model file must exist at the path in `MODEL` (`.env`), default `./vtt_models/g
 ## Architecture
 
 The whole app is one long-running process. `main.go` starts a mute-toggle mechanism and the VTT service:
-1. **Mute toggle** — OS-conditional in `main.go`. On Linux, a control HTTP server on `127.0.0.1:8765` (`POST /toggle-mute`, `GET /status`); `tools/toggle-mute.sh` binds this to a hotkey via xbindkeys. On macOS, no HTTP server is started at all — `main.go` writes its PID to `/tmp/simon-dictate.pid` and toggles dictation on `SIGUSR1`, triggered by an skhd shortcut (see `tools/skhdrc.example`) sending `kill -SIGUSR1 $(cat /tmp/simon-dictate.pid)`.
+1. **Mute toggle** — OS-conditional in `main.go`. On Linux, a control HTTP server on `127.0.0.1:8765` (`POST /toggle-mute`, `GET /status`); `tools/toggle-mute.sh` binds this to a hotkey via xbindkeys. On macOS, no HTTP server is started — instead a small floating AppKit control window (`gui_darwin.go`/`.m`/`.h`, native cgo, `//go:build darwin`) shows "Mute" and "Exit" buttons. Because the Cocoa run loop (`[NSApp run]`) must own the main OS thread, `main()` calls `runtime.LockOSThread()`, runs `vttsrv.Run()` on a goroutine, and hands the main goroutine to `runControlUI` (which blocks in the run loop); the `!darwin` build gets a no-op `runControlUI` stub (`gui_other.go`). The "Exit" button and SIGINT/SIGTERM share `gracefulShutdownFor`. Button clicks reach Go via `//export goOnMuteClicked`/`goOnExitClicked`.
 2. **VTT service** (`vtt.Init().Run()`) — the audio→text pipeline.
 
 ### The audio pipeline (`src/vtt/`)
