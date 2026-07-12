@@ -25,6 +25,18 @@ func goOnMuteClicked() C.int {
 	return 0
 }
 
+//export goOnLangClicked
+func goOnLangClicked() C.int {
+	if guiService.GetLanguage() == "en" {
+		guiService.SetLanguage("es")
+		_ = vtt.Notification("Dictation", "Language: Spanish")
+		return 0
+	}
+	guiService.SetLanguage("en")
+	_ = vtt.Notification("Dictation", "Language: English")
+	return 1
+}
+
 //export goOnExitClicked
 func goOnExitClicked() {
 	gracefulShutdownFor(guiService) // never returns (os.Exit)
@@ -35,5 +47,9 @@ func goOnExitClicked() {
 // blocks forever.
 func runControlUI(vttsrv *vtt.VTTService) {
 	guiService = vttsrv
-	C.gui_run()
+	langIsEnglish := C.int(0)
+	if vttsrv.GetLanguage() == "en" {
+		langIsEnglish = 1
+	}
+	C.gui_run(langIsEnglish)
 }
