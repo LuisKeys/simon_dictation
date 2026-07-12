@@ -53,6 +53,7 @@ Flow, all in `vtt_service.go`:
 ## Configuration (env vars, via `.env` or environment)
 
 - `MODEL` — whisper model path.
+- `VTT_INPUT_GAIN` (default 1.0) — input gain multiplier applied to raw mic samples in `processAudio` (before the bandpass filter), clamped to `[-1, 1]`. Raise it (e.g. 3–5) if you have to speak loudly for detection to trigger — quiet/low-level microphones make the whole VAD chain see levels too low to clear the adaptive silence threshold. Lower it if speech clips or background noise leaks through. `1.0` is a no-op.
 - `VTT_NOISE_GATE`, `VTT_CREST_FACTOR_MAX`, `VTT_MIN_SPEECH_MS`, `VTT_PERIODICITY_MIN` — VAD tuning (0 disables the respective gate where noted in code).
 - `VTT_SILENCE_CAP` (default 0.05), `VTT_NOISE_CAL_RETRIES` (default 3) — startup noise-calibration tuning. Calibration retries if the measured silence threshold exceeds `VTT_SILENCE_CAP` (likely speech during calibration), up to `VTT_NOISE_CAL_RETRIES` times, then accepts the measured value so the daemon always starts.
 - `VTT_SILENCE_MULT` (default 15.0) — multiplier applied to `(mean + 2*stddev)` when computing the adaptive silence threshold at calibration. Lower it (e.g. 8–10) if quiet/short words (like "Hugo") never trigger detection; raise it if background noise leaks through.

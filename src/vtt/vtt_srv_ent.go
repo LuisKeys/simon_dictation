@@ -89,6 +89,11 @@ type VTTService struct {
 	stopChan  chan struct{}
 	AudioData chan []float32
 
+	// Input gain multiplier applied to raw samples before the bandpass filter.
+	// Amplifies low-level microphones so the whole VAD chain works at normal
+	// speaking volume. 1.0 = no gain (default, no-op).
+	inputGain float32
+
 	// Noise gate: minimum RMS level to allow audio into the VAD pipeline (0 = disabled)
 	noiseGateThreshold float32
 
@@ -140,6 +145,17 @@ func NewVTTSrv() (*VTTService, error) {
 	err := portaudio.Initialize()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to initialize portaudio")
+	}
+
+	// Read input gain multiplier from environment variable
+	inputGain := float32(1.0)
+	if val := os.Getenv("VTT_INPUT_GAIN"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 32); err == nil && parsed > 0 {
+			inputGain = float32(parsed)
+			fmt.Printf("Input gain set to: %f\n", inputGain)
+		} else {
+			log.Printf("Warning: invalid VTT_INPUT_GAIN value %q, using default 1.0", val)
+		}
 	}
 
 	// Read noise gate threshold from environment variable
@@ -232,6 +248,7 @@ func NewVTTSrv() (*VTTService, error) {
 		channels:             1,
 		language:             "es",
 		stopChan:             make(chan struct{}),
+		inputGain:            inputGain,
 		noiseGateThreshold:   noiseGate,
 		crestFactorMax:       crestFactorMax,
 		minSpeechMs:          minSpeechMs,
@@ -326,6 +343,20 @@ func (vtt *VTTService) Shutdown() {
 func (vtt *VTTService) processAudio(in []float32) {
 	vtt.mutex.Lock()
 	defer vtt.mutex.Unlock()
+
+	// Amplify low-level input before filtering/VAD. Clamp to [-1, 1] to avoid
+	// hard-clipping artifacts from overly aggressive gain.
+	if vtt.inputGain != 1.0 {
+		for i := range in {
+			s := in[i] * vtt.inputGain
+			if s > 1.0 {
+				s = 1.0
+			} else if s < -1.0 {
+				s = -1.0
+			}
+			in[i] = s
+		}
+	}
 
 	vtt.voiceFilter.Process(in)
 
