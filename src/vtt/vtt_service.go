@@ -154,6 +154,10 @@ func (vtt *VTTService) dispatch(audioData []float32) {
 			}
 			text = filtered
 		}
+		if vtt.knownTextFilter != nil && vtt.knownTextFilter.IsStandaloneHallucination(text) {
+			log.Printf("dropped standalone hallucination: %q", text)
+			text = ""
+		}
 		if vtt.nameCapitalizer != nil {
 			text = vtt.nameCapitalizer.Apply(text)
 		}

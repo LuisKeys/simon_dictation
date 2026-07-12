@@ -8,11 +8,29 @@ type KnownTextFilter struct {
 	phrases [][]string
 }
 
+// standaloneHallucinations are single words Whisper hallucinates from
+// near-silent/noisy audio (e.g. keyboard clicks picked up by the mic).
+// A transcript is only dropped when it consists of exactly one such word,
+// so these terms are left untouched inside real multi-word sentences.
+var standaloneHallucinations = map[string]bool{
+	"gracias": true,
+}
+
 func NewKnownTextFilter() *KnownTextFilter {
 	f := &KnownTextFilter{}
 	// Common recurring artifact reported by users.
 	f.AddPhrase("cC por Antarctica Films Argentina")
 	return f
+}
+
+// IsStandaloneHallucination reports whether text, once tokenized, is a
+// single word from the standaloneHallucinations set.
+func (f *KnownTextFilter) IsStandaloneHallucination(text string) bool {
+	keys := extractWordKeys(text)
+	if len(keys) != 1 {
+		return false
+	}
+	return standaloneHallucinations[keys[0]]
 }
 
 func (f *KnownTextFilter) AddPhrase(phrase string) {

@@ -123,6 +123,19 @@ go build main.go
 	- check: `pkg-config --cflags --libs whisper`
 	- if needed, set `PKG_CONFIG_PATH` as shown above and rebuild
 
+- Keyboard clicks / ambient noise picked up by the mic get transcribed (often as a hallucinated filler word like "gracias")
+	- the VAD is letting percussive transients through; tighten it via `.env`:
+		```
+		VTT_CREST_FACTOR_MAX=4
+		VTT_NOISE_GATE=0.02
+		VTT_MIN_SPEECH_MS=500
+		```
+	- `VTT_CREST_FACTOR_MAX` (default `8.0`) makes the percussive-transient rejection gate fire more readily on clicky audio; lower it further if clicks still get through
+	- `VTT_NOISE_GATE` (default `0`, disabled) sets a hard RMS floor below which audio is ignored — start low and raise until clicks are gated but your speaking volume is not
+	- `VTT_MIN_SPEECH_MS` (default `300`) requires a longer sustained voiced buffer before dispatching to Whisper, filtering out isolated single clicks
+	- these are starting points; actual values depend on mic distance/gain, so test and adjust
+	- as a backstop, a transcript that is *only* a known hallucinated filler word (currently just "gracias") is dropped entirely rather than typed — see `standaloneHallucinations` in `src/vtt/known_text_filter.go`
+
 ## License
 
 MIT License
