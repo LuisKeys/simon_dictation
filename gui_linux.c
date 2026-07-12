@@ -7,11 +7,45 @@ static GtkWidget *gMuteButton = NULL;
 static GtkWidget *gLangButton = NULL;
 static int gExiting = 0; // guards against re-entrant shutdown (destroy + Exit)
 
+// Swap a single "bg-*" style class on a button so its background color reflects
+// state. GTK buttons take colors via CSS classes, not direct property setters.
+static void set_bg_class(GtkWidget *button, const char *cls) {
+    static int provider_installed = 0;
+    if (!provider_installed) {
+        GtkCssProvider *provider = gtk_css_provider_new();
+        gtk_css_provider_load_from_data(provider,
+            ".bg-red    { background-image: none; background-color: #d64541; color: #ffffff; }"
+            ".bg-gray   { background-image: none; background-color: #7f8c8d; color: #ffffff; }"
+            ".bg-blue   { background-image: none; background-color: #59c7fa; color: #ffffff; }",
+            -1, NULL);
+        gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+            GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+        g_object_unref(provider);
+        provider_installed = 1;
+    }
+    GtkStyleContext *ctx = gtk_widget_get_style_context(button);
+    gtk_style_context_remove_class(ctx, "bg-red");
+    gtk_style_context_remove_class(ctx, "bg-gray");
+    gtk_style_context_remove_class(ctx, "bg-blue");
+    gtk_style_context_add_class(ctx, cls);
+}
+
+// Mute button: red while listening (enabled), gray while muted.
+static void apply_mute_color(GtkWidget *b, int enabled) {
+    if (b) set_bg_class(b, enabled ? "bg-red" : "bg-gray");
+}
+
+// Language button: red in EN, light blue ("celeste") in ES.
+static void apply_lang_color(GtkWidget *b, int english) {
+    if (b) set_bg_class(b, english ? "bg-red" : "bg-blue");
+}
+
 static void on_mute_clicked(GtkButton *button, gpointer user_data) {
     (void)user_data;
     // goOnMuteClicked toggles dictation and returns the new enabled state.
     int enabled = goOnMuteClicked();
     gtk_button_set_label(button, enabled ? "Mute" : "Muted");
+    apply_mute_color(GTK_WIDGET(button), enabled);
 }
 
 static void on_lang_clicked(GtkButton *button, gpointer user_data) {
@@ -19,6 +53,7 @@ static void on_lang_clicked(GtkButton *button, gpointer user_data) {
     // goOnLangClicked toggles the language and returns 1 (English) / 0 (Spanish).
     int english = goOnLangClicked();
     gtk_button_set_label(button, english ? "EN" : "ES");
+    apply_lang_color(GTK_WIDGET(button), english);
 }
 
 static void on_exit_clicked(GtkButton *button, gpointer user_data) {
@@ -54,10 +89,12 @@ void gui_run(int langIsEnglish) {
     gMuteButton = gtk_button_new_with_label("Mute");
     g_signal_connect(gMuteButton, "clicked", G_CALLBACK(on_mute_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(box), gMuteButton, TRUE, TRUE, 0);
+    apply_mute_color(gMuteButton, 1); // starts listening
 
     gLangButton = gtk_button_new_with_label(langIsEnglish ? "EN" : "ES");
     g_signal_connect(gLangButton, "clicked", G_CALLBACK(on_lang_clicked), NULL);
     gtk_box_pack_start(GTK_BOX(box), gLangButton, TRUE, TRUE, 0);
+    apply_lang_color(gLangButton, langIsEnglish);
 
     GtkWidget *exitButton = gtk_button_new_with_label("Exit");
     g_signal_connect(exitButton, "clicked", G_CALLBACK(on_exit_clicked), NULL);
@@ -89,8 +126,10 @@ void gui_run(int langIsEnglish) {
 
 static gboolean apply_mute_label(gpointer data) {
     int enabled = GPOINTER_TO_INT(data);
-    if (gMuteButton)
+    if (gMuteButton) {
         gtk_button_set_label(GTK_BUTTON(gMuteButton), enabled ? "Mute" : "Muted");
+        apply_mute_color(gMuteButton, enabled);
+    }
     return G_SOURCE_REMOVE;
 }
 
