@@ -35,6 +35,7 @@ vendor/
 .DS_Store
 
 main
+vad_debug/
 vtt_models/
 vtt_models/names_full.txt
 vtt_models/names_last.txt

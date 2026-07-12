@@ -89,7 +89,7 @@ func (vtt *VTTService) Listen() {
 				noiseSamples = append(noiseSamples, rms)
 				if len(noiseSamples) >= noiseSampleFrames {
 					mean, stddev := CalcMeanStdDev(noiseSamples)
-					silenceThreshold = (mean + 2*stddev) * 15
+					silenceThreshold = (mean + 2*stddev) * vtt.silenceThresholdMult
 					if silenceThreshold > vtt.silenceCalCap && noiseRetries < vtt.noiseCalRetries {
 						// Threshold likely polluted by speech during calibration; retry.
 						noiseRetries++
@@ -114,6 +114,16 @@ func (vtt *VTTService) Listen() {
 
 			now := time.Now()
 			isVoiceActive := !collectingNoise && !gated && rms > silenceThreshold && !vtt.isTransient(frame) && !vtt.isAperiodic(frame)
+
+			if vtt.debugVAD && !collectingNoise && (speaking || rms > silenceThreshold*0.3) {
+				cf := computeCrestFactor(frame)
+				zcr := computeZCR(frame)
+				periodicity := computePeriodicity(frame, int(vtt.rate))
+				log.Printf("VAD: rms=%.5f thr=%.5f gated=%t cf=%.2f(max %.2f) zcr=%.2f period=%.3f(min %.3f) | rmsOK=%t !transient=%t !aperiodic=%t => voice=%t speaking=%t",
+					rms, silenceThreshold, gated, cf, vtt.crestFactorMax, zcr, periodicity, vtt.periodicityMin,
+					rms > silenceThreshold, !vtt.isTransient(frame), !vtt.isAperiodic(frame), isVoiceActive, speaking)
+			}
+
 			if isVoiceActive {
 				speaking = true
 				lastSoundTime = now
@@ -139,6 +149,12 @@ func (vtt *VTTService) Listen() {
 func (vtt *VTTService) dispatch(audioData []float32) {
 	if len(audioData) == 0 {
 		return
+	}
+	if vtt.debugVAD {
+		durMs := len(audioData) * 1000 / 16000
+		dropped := vtt.minSpeechMs > 0 && len(audioData) < vtt.minSpeechMs*16
+		log.Printf("VAD dispatch: buffer=%d samples (%d ms), minSpeechMs=%d, dropped=%t", len(audioData), durMs, vtt.minSpeechMs, dropped)
+		vtt.dumpUtteranceWAV(audioData)
 	}
 	if vtt.minSpeechMs > 0 {
 		minSamples := vtt.minSpeechMs * 16 // 16000 Hz / 1000 ms

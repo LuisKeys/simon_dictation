@@ -102,11 +102,18 @@ type VTTService struct {
 	// Breathing/sighs score near 0, voice scores 0.3+. (0 = disabled)
 	periodicityMin float64
 
+	// Multiplier applied to (mean + 2*stddev) when computing the adaptive silence
+	// threshold during noise calibration. Higher = more aggressive (rejects quieter speech).
+	silenceThresholdMult float64
+
 	// Max acceptable calibrated silence threshold before retrying noise collection.
 	silenceCalCap float64
 
 	// Max noise-calibration retries before accepting the measured threshold anyway.
 	noiseCalRetries int
+
+	// When true, log per-frame VAD metrics and dump each dispatched utterance to a WAV file.
+	debugVAD bool
 
 	// Dictation status
 	DictationEnabled bool
@@ -190,6 +197,24 @@ func NewVTTSrv() (*VTTService, error) {
 		}
 	}
 
+	// Read silence threshold multiplier from environment variable
+	silenceThresholdMult := 15.0
+	if val := os.Getenv("VTT_SILENCE_MULT"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 64); err == nil {
+			silenceThresholdMult = parsed
+			fmt.Printf("Silence threshold multiplier set to: %f\n", silenceThresholdMult)
+		} else {
+			log.Printf("Warning: invalid VTT_SILENCE_MULT value %q, using default 15.0", val)
+		}
+	}
+
+	// Read VAD debug flag from environment variable
+	debugVAD := false
+	if val := os.Getenv("VTT_VAD_DEBUG"); val != "" && val != "0" {
+		debugVAD = true
+		fmt.Println("VAD debug enabled: logging per-frame metrics and dumping utterances to WAV")
+	}
+
 	// Read noise calibration retry count from environment variable
 	noiseCalRetries := 3
 	if val := os.Getenv("VTT_NOISE_CAL_RETRIES"); val != "" {
@@ -202,20 +227,22 @@ func NewVTTSrv() (*VTTService, error) {
 	}
 
 	service := &VTTService{
-		rate:               16000,
-		chunkSize:          2048,
-		channels:           1,
-		language:           "es",
-		stopChan:           make(chan struct{}),
-		noiseGateThreshold: noiseGate,
-		crestFactorMax:     crestFactorMax,
-		minSpeechMs:        minSpeechMs,
-		periodicityMin:     periodicityMin,
-		silenceCalCap:      silenceCalCap,
-		noiseCalRetries:    noiseCalRetries,
-		nameCapitalizer:    NewNameCapitalizer(),
-		knownTextFilter:    NewKnownTextFilter(),
-		textReplacer:       NewTextReplacer(),
+		rate:                 16000,
+		chunkSize:            2048,
+		channels:             1,
+		language:             "es",
+		stopChan:             make(chan struct{}),
+		noiseGateThreshold:   noiseGate,
+		crestFactorMax:       crestFactorMax,
+		minSpeechMs:          minSpeechMs,
+		periodicityMin:       periodicityMin,
+		silenceThresholdMult: silenceThresholdMult,
+		silenceCalCap:        silenceCalCap,
+		noiseCalRetries:      noiseCalRetries,
+		debugVAD:             debugVAD,
+		nameCapitalizer:      NewNameCapitalizer(),
+		knownTextFilter:      NewKnownTextFilter(),
+		textReplacer:         NewTextReplacer(),
 	}
 	service.voiceFilter = newVoiceBandpassFilter(service.rate, 300, 3400)
 

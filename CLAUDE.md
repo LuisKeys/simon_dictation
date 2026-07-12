@@ -55,6 +55,8 @@ Flow, all in `vtt_service.go`:
 - `MODEL` — whisper model path.
 - `VTT_NOISE_GATE`, `VTT_CREST_FACTOR_MAX`, `VTT_MIN_SPEECH_MS`, `VTT_PERIODICITY_MIN` — VAD tuning (0 disables the respective gate where noted in code).
 - `VTT_SILENCE_CAP` (default 0.05), `VTT_NOISE_CAL_RETRIES` (default 3) — startup noise-calibration tuning. Calibration retries if the measured silence threshold exceeds `VTT_SILENCE_CAP` (likely speech during calibration), up to `VTT_NOISE_CAL_RETRIES` times, then accepts the measured value so the daemon always starts.
+- `VTT_SILENCE_MULT` (default 15.0) — multiplier applied to `(mean + 2*stddev)` when computing the adaptive silence threshold at calibration. Lower it (e.g. 8–10) if quiet/short words (like "Hugo") never trigger detection; raise it if background noise leaks through.
+- `VTT_VAD_DEBUG` (unset/`0` = off) — diagnostics. When set, logs per-frame VAD metrics (rms, threshold, crest factor, ZCR, periodicity, per-gate results) and dumps each dispatched utterance to a 16 kHz mono WAV under `./vad_debug/` (override dir with `VTT_VAD_DEBUG_DIR`). Off by default; no production impact.
 - `VTT_INPUT_DEVICE` — PortAudio input device name.
 - `VTT_NAMES_DIR` — override dictionary directory.
 - `VTT_CAPITALIZE_SINGLE_NAMES=1` — allow capitalizing single-token names (off by default for precision).
