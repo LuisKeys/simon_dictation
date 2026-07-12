@@ -102,6 +102,12 @@ type VTTService struct {
 	// Breathing/sighs score near 0, voice scores 0.3+. (0 = disabled)
 	periodicityMin float64
 
+	// Max acceptable calibrated silence threshold before retrying noise collection.
+	silenceCalCap float64
+
+	// Max noise-calibration retries before accepting the measured threshold anyway.
+	noiseCalRetries int
+
 	// Dictation status
 	DictationEnabled bool
 
@@ -173,6 +179,28 @@ func NewVTTSrv() (*VTTService, error) {
 		}
 	}
 
+	// Read silence calibration cap from environment variable
+	silenceCalCap := 0.05
+	if val := os.Getenv("VTT_SILENCE_CAP"); val != "" {
+		if parsed, err := strconv.ParseFloat(val, 64); err == nil {
+			silenceCalCap = parsed
+			fmt.Printf("Silence calibration cap set to: %f\n", silenceCalCap)
+		} else {
+			log.Printf("Warning: invalid VTT_SILENCE_CAP value %q, using default 0.05", val)
+		}
+	}
+
+	// Read noise calibration retry count from environment variable
+	noiseCalRetries := 3
+	if val := os.Getenv("VTT_NOISE_CAL_RETRIES"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil {
+			noiseCalRetries = parsed
+			fmt.Printf("Noise calibration retries set to: %d\n", noiseCalRetries)
+		} else {
+			log.Printf("Warning: invalid VTT_NOISE_CAL_RETRIES value %q, using default 3", val)
+		}
+	}
+
 	service := &VTTService{
 		rate:               16000,
 		chunkSize:          2048,
@@ -183,6 +211,8 @@ func NewVTTSrv() (*VTTService, error) {
 		crestFactorMax:     crestFactorMax,
 		minSpeechMs:        minSpeechMs,
 		periodicityMin:     periodicityMin,
+		silenceCalCap:      silenceCalCap,
+		noiseCalRetries:    noiseCalRetries,
 		nameCapitalizer:    NewNameCapitalizer(),
 		knownTextFilter:    NewKnownTextFilter(),
 		textReplacer:       NewTextReplacer(),

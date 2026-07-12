@@ -123,6 +123,15 @@ go build -o main .
 	- check: `pkg-config --cflags --libs whisper`
 	- if needed, set `PKG_CONFIG_PATH` as shown above and rebuild
 
+- Startup is stuck repeating `Silence threshold too high, retrying noise collection...` and never transcribes
+	- the ambient noise floor during startup calibration is above the accepted cap; calibration now retries a bounded number of times, then proceeds anyway, but you can tune it via `.env`:
+		```
+		VTT_SILENCE_CAP=0.1
+		VTT_NOISE_CAL_RETRIES=3
+		```
+	- `VTT_SILENCE_CAP` (default `0.05`) is the highest calibrated silence threshold accepted without retrying — raise it for a noisier room, lower it for a very quiet one
+	- `VTT_NOISE_CAL_RETRIES` (default `3`) is how many times to re-measure before accepting whatever threshold was measured; keep quiet during startup so calibration reflects the room, not your voice
+
 - Keyboard clicks / ambient noise picked up by the mic get transcribed (often as a hallucinated filler word like "gracias")
 	- the VAD is letting percussive transients through; tighten it via `.env`:
 		```

@@ -46,6 +46,7 @@ func (vtt *VTTService) Listen() {
 		lastSoundTime    = time.Now()
 		noiseSamples     []float64
 		silenceThreshold float64
+		noiseRetries     int
 	)
 
 	frameSize := 1024
@@ -89,11 +90,17 @@ func (vtt *VTTService) Listen() {
 				if len(noiseSamples) >= noiseSampleFrames {
 					mean, stddev := CalcMeanStdDev(noiseSamples)
 					silenceThreshold = (mean + 2*stddev) * 15
-					if silenceThreshold > 0.01 {
-						// Retry collecting noise samples
+					if silenceThreshold > vtt.silenceCalCap && noiseRetries < vtt.noiseCalRetries {
+						// Threshold likely polluted by speech during calibration; retry.
+						noiseRetries++
 						noiseSamples = nil
-						fmt.Println("Silence threshold too high, retrying noise collection...")
+						fmt.Printf("Silence threshold too high (%.5f > %.5f), retrying noise collection (%d/%d)...\n",
+							silenceThreshold, vtt.silenceCalCap, noiseRetries, vtt.noiseCalRetries)
 						continue
+					}
+					if silenceThreshold > vtt.silenceCalCap {
+						log.Printf("Noise calibration did not settle after %d retries; proceeding with measured threshold %.5f",
+							vtt.noiseCalRetries, silenceThreshold)
 					}
 					collectingNoise = false
 					noiseSamples = nil // free memory
