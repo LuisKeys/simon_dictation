@@ -50,7 +50,7 @@ Build the wrapper archive linked by `vtt_whisper.go`, then build the app:
 
 ```bash
 src/vtt/build_wrapper.sh
-go build main.go
+go build -o main .
 ```
 
 ### macOS
@@ -75,7 +75,7 @@ Build the wrapper archive, then build the app:
 
 ```bash
 src/vtt/build_wrapper.sh
-go build main.go
+go build -o main .
 ```
 
 Grant two permissions before running (System Settings → Privacy & Security):
@@ -107,7 +107,7 @@ pkg-config --cflags --libs whisper
 
 # Build the whisper wrapper archive, then the app
 src/vtt/build_wrapper.sh
-go build main.go
+go build -o main .
 ```
 
 ## Usage

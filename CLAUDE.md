@@ -9,7 +9,7 @@ Simon Dictate is a voice-dictation daemon written in Go, supporting both Linux (
 ## Build & run
 
 ```bash
-go build main.go        # produces ./main
+go build -o main .      # produces ./main (builds the whole package; `go build main.go` compiles only that one file and fails)
 ./main                  # runs the daemon
 ./supervisor.sh         # Linux only: runs xbindkeys + ./main in a crash-restart loop (production entrypoint). On macOS, run ./main directly instead — supervisor.sh refuses to run there.
 ```
