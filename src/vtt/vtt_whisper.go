@@ -3,7 +3,8 @@ package vtt
 /*
 #cgo CFLAGS: -I${SRCDIR}
 #cgo pkg-config: whisper
-#cgo LDFLAGS: -L${SRCDIR} -lwhisper_wrapper -lstdc++
+#cgo linux LDFLAGS: -L${SRCDIR} -lwhisper_wrapper_linux -lstdc++
+#cgo darwin LDFLAGS: -L${SRCDIR} -lwhisper_wrapper_darwin -lc++
 
 #include <stdlib.h>
 #include "whisper_wrapper.h"

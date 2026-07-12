@@ -4,30 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Simon Dictate is a Linux voice-dictation daemon written in Go. It captures microphone audio via PortAudio, runs local speech-to-text with whisper.cpp (via a C/C++ cgo wrapper), post-processes the transcript, and types the result into the focused window using `xdotool`. It is X11-specific (relies on `xdotool` and X11 dev libraries).
+Simon Dictate is a voice-dictation daemon written in Go, supporting both Linux (X11) and macOS. It captures microphone audio via PortAudio, runs local speech-to-text with whisper.cpp (via a C/C++ cgo wrapper), post-processes the transcript, and types the result into the focused window — via `xdotool` on Linux, or a native CGEvent cgo wrapper on macOS.
 
 ## Build & run
 
 ```bash
 go build main.go        # produces ./main
 ./main                  # runs the daemon
-./supervisor.sh         # runs xbindkeys + ./main in a crash-restart loop (production entrypoint)
+./supervisor.sh         # Linux only: runs xbindkeys + ./main in a crash-restart loop (production entrypoint). On macOS, run ./main directly instead — supervisor.sh refuses to run there.
 ```
 
 There are no tests in this repo.
 
 ### Build prerequisites (cgo + whisper)
 
-The build links against whisper.cpp, resolved through `pkg-config` (`whisper` package). whisper.cpp must be built/installed first, or `go build` fails with `whisper.h: No such file or directory`. If pkg-config can't find it, set `PKG_CONFIG_PATH` to whisper.cpp's `pkgconfig` dir (see README). System deps: `libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev xdotool cmake build-essential pkg-config`.
+The build links against whisper.cpp, resolved through `pkg-config` (`whisper` package). whisper.cpp must be built/installed first, or `go build` fails with `whisper.h: No such file or directory`. If pkg-config can't find it, set `PKG_CONFIG_PATH` to whisper.cpp's `pkgconfig` dir (see README). Linux system deps: `libx11-dev libxtst-dev libxi-dev libxkbcommon-dev libxinerama-dev xdotool cmake build-essential pkg-config`. macOS: `brew install portaudio pkg-config cmake skhd` plus whisper.cpp built from source (Metal acceleration via `-DGGML_METAL=ON`).
 
-`src/vtt/libwhisper_wrapper.a` and `whisper_wrapper.o` are checked-in prebuilt artifacts of `whisper_wrapper.cpp`. If you change `whisper_wrapper.cpp` or `.h`, you must recompile the wrapper and rebuild the static archive — plain `go build` will not do it (the cgo directives in `vtt_whisper.go` link `-lwhisper_wrapper` from `src/vtt/`).
+`src/vtt/libwhisper_wrapper_linux.a` (Linux) / `src/vtt/libwhisper_wrapper_darwin.a` (macOS) are prebuilt archives of `whisper_wrapper.cpp`, selected by OS-conditional `#cgo linux`/`#cgo darwin` LDFLAGS directives in `vtt_whisper.go` (`-lstdc++` on Linux, `-lc++` on macOS). Neither is checked into git (`*.a` is gitignored) — run `src/vtt/build_wrapper.sh` to build the one for your OS before `go build`. If you change `whisper_wrapper.cpp` or `.h`, rerun that script — plain `go build` will not rebuild the archive.
 
 A model file must exist at the path in `MODEL` (`.env`), default `./vtt_models/ggml-large-v3.bin`. Pull ggml models from https://huggingface.co/ggerganov/whisper.cpp.
 
 ## Architecture
 
-The whole app is one long-running process. `main.go` starts two goroutines:
-1. **Control HTTP server** on `127.0.0.1:8765` — `POST /toggle-mute` (toggle dictation on/off) and `GET /status` (JSON state). `tools/toggle-mute.sh` + xbindkeys bind this to a hotkey.
+The whole app is one long-running process. `main.go` starts a mute-toggle mechanism and the VTT service:
+1. **Mute toggle** — OS-conditional in `main.go`. On Linux, a control HTTP server on `127.0.0.1:8765` (`POST /toggle-mute`, `GET /status`); `tools/toggle-mute.sh` binds this to a hotkey via xbindkeys. On macOS, no HTTP server is started at all — `main.go` writes its PID to `/tmp/simon-dictate.pid` and toggles dictation on `SIGUSR1`, triggered by an skhd shortcut (see `tools/skhdrc.example`) sending `kill -SIGUSR1 $(cat /tmp/simon-dictate.pid)`.
 2. **VTT service** (`vtt.Init().Run()`) — the audio→text pipeline.
 
 ### The audio pipeline (`src/vtt/`)
@@ -40,11 +40,11 @@ Flow, all in `vtt_service.go`:
 
 ### Supporting units
 
-- `vtt_whisper.go` — cgo bridge to whisper.cpp. **This is the only cgo file**; the `import "C"` block carries the compiler/linker directives.
+- `vtt_whisper.go` — cgo bridge to whisper.cpp, with OS-conditional `#cgo linux`/`#cgo darwin` LDFLAGS. This and the `src/input` sender files are the only cgo in the repo.
 - `vtt_commands.go` — voice command parser (language switch, dictation toggle, live add/remove/reload of names). Commands are matched against the transcript text, not keystrokes.
 - `name_capitalizer.go` — deterministic proper-name capitalizer backed by dictionary files in `./vtt_models` (`names_full.txt`, `names_first.txt`, `names_last.txt`, `names_exceptions.txt`; override dir with `VTT_NAMES_DIR`). Full-name matches beat exceptions. Thread-safe (RWMutex) because voice commands mutate it live.
 - `known_text_filter.go` — drops recurring Whisper artifact phrases from the output.
-- `src/input/sender.go` — serialized `xdotool type` sender. All output goes through a single-goroutine queue (`Enqueue`/`SendSync`) to preserve ordering; `keyDelay` guards against dropped shift/case in some apps.
+- `src/input/sender.go` — serialized text sender, OS-agnostic queue (`Enqueue`/`SendSync`) preserving output ordering. The actual typing call (`typeText`) is platform-specific: `sender_linux.go` shells out to `xdotool type` (`keyDelay` guards against dropped shift/case in some apps); `sender_darwin.go` posts a native CGEvent via the `cg_events_darwin.c`/`.h` cgo wrapper (whole-string Unicode post, no per-key delay needed).
 
 ### Concurrency notes
 
@@ -57,7 +57,7 @@ Flow, all in `vtt_service.go`:
 - `VTT_INPUT_DEVICE` — PortAudio input device name.
 - `VTT_NAMES_DIR` — override dictionary directory.
 - `VTT_CAPITALIZE_SINGLE_NAMES=1` — allow capitalizing single-token names (off by default for precision).
-- `VTT_KEY_DELAY_MS`, `VTT_XDOTOOL_CLEAR_MODIFIERS` — xdotool sender tuning.
+- `VTT_KEY_DELAY_MS`, `VTT_XDOTOOL_CLEAR_MODIFIERS` — xdotool sender tuning (Linux only; no effect on macOS).
 
 ## Voice commands
 

@@ -34,7 +34,6 @@ vendor/
 *.swo
 .DS_Store
 
-.env
 main
 vtt_models/
 vtt_models/names_full.txt

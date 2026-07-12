@@ -1,6 +1,6 @@
 # Simon Dictate
 
-A voice dictation tool for converting speech to text for linux.
+A voice dictation tool for converting speech to text. Supports Linux (X11) and macOS.
 
 ## Features
 
@@ -16,6 +16,8 @@ A voice dictation tool for converting speech to text for linux.
 "Recargar nombres" / "Recarga nombres" / "Reload names" : Reload dictionary files from disk
 
 ## Requirements
+
+### Linux (X11)
 
 ```bash
 sudo apt update
@@ -44,6 +46,45 @@ If `pkg-config --cflags --libs whisper` does not work, export `PKG_CONFIG_PATH`:
 export PKG_CONFIG_PATH=/home/lucho/projects/ai/whisper.cpp/build/install/lib/pkgconfig:$PKG_CONFIG_PATH
 ```
 
+Build the wrapper archive linked by `vtt_whisper.go`, then build the app:
+
+```bash
+src/vtt/build_wrapper.sh
+go build main.go
+```
+
+### macOS
+
+```bash
+brew install portaudio pkg-config cmake skhd
+```
+
+Build `whisper.cpp` from source (Metal acceleration is enabled by default on Apple Silicon):
+
+```bash
+git clone https://github.com/ggerganov/whisper.cpp
+cd whisper.cpp
+cmake -B build -DGGML_METAL=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+cmake --install build
+```
+
+If `pkg-config --cflags --libs whisper` does not find it, export `PKG_CONFIG_PATH` to wherever `cmake --install` placed the `.pc` file (e.g. `/usr/local/lib/pkgconfig` or `/opt/homebrew/lib/pkgconfig`).
+
+Build the wrapper archive, then build the app:
+
+```bash
+src/vtt/build_wrapper.sh
+go build main.go
+```
+
+Grant two permissions before running (System Settings → Privacy & Security):
+
+- **Accessibility** — required for typing dictated text via CGEvent (add the built `./main` binary or the terminal app you launch it from).
+- **Microphone** — required for PortAudio/CoreAudio to capture audio.
+
+Without Accessibility, the app runs and transcribes but every typed insert fails silently at the OS level (logged as `cg_type_unicode failed`); grant it and restart `./main`.
+
 ## Installation
 
 ```bash
@@ -51,14 +92,21 @@ export PKG_CONFIG_PATH=/home/lucho/projects/ai/whisper.cpp/build/install/lib/pkg
 git clone https://github.com/username/simon_dictate.git
 cd simon_dictate
 mkdir vtt_models
+cd vtt_models
 
 # Pull ggml-base.bin file from https://huggingface.co/ggerganov/whisper.cpp/tree/main
 # Copy that file inside vtt_models
+curl -L \
+  -o ggml-large-v3.bin \
+  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin
+
+cd ..
 
 # Verify whisper package metadata is visible
 pkg-config --cflags --libs whisper
 
-# Build the app
+# Build the whisper wrapper archive, then the app
+src/vtt/build_wrapper.sh
 go build main.go
 ```
 
@@ -86,6 +134,8 @@ This project includes a small local control HTTP endpoint to toggle the app-leve
 - `POST /toggle-mute` — toggles dictation on/off
 - `GET /status` — returns current dictation state as JSON
 
+### Linux
+
 Quick setup using `xbindkeys` (recommended):
 
 1. Make sure the app is running (`./main`).
@@ -104,6 +154,31 @@ xbindkeys
 ```
 
 Press `Alt+Ctrl+Shift+M` to toggle dictation. A desktop notification will show the new state.
+
+`supervisor.sh` launches and manages `xbindkeys` automatically alongside `./main` on Linux.
+
+### macOS
+
+Quick setup using `skhd`:
+
+1. Make sure the app is running (`./main`).
+2. Copy `tools/toggle-mute.sh` somewhere and make it executable:
+
+```bash
+chmod +x tools/toggle-mute.sh
+```
+
+3. Install `skhd` (`brew install skhd`). Add an entry to `~/.skhdrc` (see `tools/skhdrc.example`) mapping `Cmd+Ctrl+Shift+M` to run the script.
+
+4. Start `skhd` as a background service:
+
+```bash
+skhd --start-service
+```
+
+Press `Cmd+Ctrl+Shift+M` to toggle dictation. Unlike `xbindkeys` on Linux, `skhd` runs as its own persistent `brew services` daemon.
+
+`supervisor.sh` is Linux-only and will refuse to run on macOS — on macOS, just run `./main` directly. There's no crash-restart supervision on macOS; if it crashes, restart it manually.
 
 ## Proper Name Capitalization
 
