@@ -14,9 +14,9 @@ static void set_bg_class(GtkWidget *button, const char *cls) {
     if (!provider_installed) {
         GtkCssProvider *provider = gtk_css_provider_new();
         gtk_css_provider_load_from_data(provider,
-            ".bg-red    { background-image: none; background-color: #d64541; color: #ffffff; }"
-            ".bg-gray   { background-image: none; background-color: #7f8c8d; color: #ffffff; }"
-            ".bg-blue   { background-image: none; background-color: #59c7fa; color: #ffffff; }",
+            ".bg-red    { background-image: none; box-shadow: none; background-color: #d64541; color: #ffffff; }"
+            ".bg-gray   { background-image: none; box-shadow: none; background-color: #7f8c8d; color: #ffffff; }"
+            ".bg-blue   { background-image: none; box-shadow: none; background-color: #59c7fa; color: #ffffff; }",
             -1, NULL);
         gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
             GTK_STYLE_PROVIDER(provider), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
