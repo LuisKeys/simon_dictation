@@ -14,6 +14,8 @@ static void set_bg_class(GtkWidget *button, const char *cls) {
     if (!provider_installed) {
         GtkCssProvider *provider = gtk_css_provider_new();
         gtk_css_provider_load_from_data(provider,
+            // Larger font + padding so the buttons stay readable on 4K/HiDPI screens.
+            "button     { font-size: 22px; padding: 16px 24px; min-width: 110px; min-height: 56px; }"
             ".bg-red    { background-image: none; box-shadow: none; background-color: #d64541; color: #ffffff; }"
             ".bg-gray   { background-image: none; box-shadow: none; background-color: #7f8c8d; color: #ffffff; }"
             ".bg-blue   { background-image: none; box-shadow: none; background-color: #59c7fa; color: #ffffff; }",
@@ -81,9 +83,9 @@ void gui_run(int langIsEnglish) {
     gtk_window_set_keep_above(GTK_WINDOW(window), TRUE); // ~ NSFloatingWindowLevel
     gtk_window_set_resizable(GTK_WINDOW(window), FALSE);
     gtk_window_set_decorated(GTK_WINDOW(window), TRUE);
-    gtk_container_set_border_width(GTK_CONTAINER(window), 8);
+    gtk_container_set_border_width(GTK_CONTAINER(window), 14);
 
-    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 6);
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
     gtk_container_add(GTK_CONTAINER(window), box);
 
     gMuteButton = gtk_button_new_with_label("Mute");
