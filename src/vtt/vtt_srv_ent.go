@@ -9,7 +9,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gen2brain/beeep"
 	"github.com/gordonklaus/portaudio"
 	"github.com/joho/godotenv"
 	"github.com/pkg/errors"
@@ -384,7 +383,8 @@ func CalcMeanStdDev(samples []float64) (mean, stddev float64) {
 }
 
 func Notification(title, message string) error {
-	return beeep.Notify(title, message, "")
+	return nil
+	//return beeep.Notify(title, message, "")
 }
 
 // SetLanguage sets the transcription language in a thread-safe manner.
