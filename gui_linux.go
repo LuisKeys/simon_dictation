@@ -42,11 +42,27 @@ func goOnExitClicked() {
 	gracefulShutdownFor(guiService) // never returns (os.Exit)
 }
 
+// setMuteLabel syncs the Mute button with the dictation state after a toggle
+// that did not originate from the button itself (e.g. the MIDI trigger).
+// Safe to call from any goroutine: gui_set_mute_label marshals the update onto
+// the GTK main loop via g_idle_add, and no-ops if the window does not exist yet.
+func setMuteLabel(enabled bool) {
+	state := C.int(0)
+	if enabled {
+		state = 1
+	}
+	C.gui_set_mute_label(state)
+}
+
 // runControlUI wires up the service pointer and enters the GTK main loop.
 // MUST be called from the main goroutine (with the OS thread locked); it
 // blocks forever.
 func runControlUI(vttsrv *vtt.VTTService) {
 	guiService = vttsrv
+
+	// Last chance to start background workers: gtk_main() below never returns.
+	startMidiToggle(vttsrv)
+
 	langIsEnglish := C.int(0)
 	if vttsrv.GetLanguage() == "en" {
 		langIsEnglish = 1

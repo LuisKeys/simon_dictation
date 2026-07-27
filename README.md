@@ -153,11 +153,37 @@ MIT License
 
 On both Linux and macOS, when you run `./main` a small floating control window titled **Simon** appears near the top-right corner of the screen. It stays on top of other windows and has three buttons:
 
-- **Mute** — toggles dictation on/off (a desktop notification shows the new state). The label reflects button clicks (Mute ↔ Muted); toggling via the "auto" voice command does not update it.
+- **Mute** — toggles dictation on/off (a desktop notification shows the new state). The label reflects button clicks and the MIDI toggle below (Mute ↔ Muted); toggling via the "auto" voice command does not update it.
 - **EN / ES** — toggles the recognition language between English and Spanish (a desktop notification shows the new language).
 - **Exit** — shuts the app down cleanly (closes the audio stream and Whisper model, releases the pidfile). Closing the window has the same effect.
 
-There is no HTTP endpoint and no external hotkey daemon — control is entirely through this window. On Linux it is a GTK3 window (`gui_linux.*`); on macOS an AppKit window (`gui_darwin.*`) that runs as an accessory (no Dock icon, no menu bar).
+There is no HTTP endpoint and no external hotkey daemon. On Linux, mute can additionally be toggled from a MIDI controller (see below); otherwise control is entirely through this window. On Linux it is a GTK3 window (`gui_linux.*`); on macOS an AppKit window (`gui_darwin.*`) that runs as an accessory (no Dock icon, no menu bar).
+
+## MIDI mute toggle (Linux only)
+
+If you have a MIDI keyboard or controller connected, a single key can toggle mute without leaving the app you are dictating into — no keyboard focus change, no mouse. It reads the ALSA rawmidi device directly, so there is nothing extra to install, and it works the same under X11 and Wayland. It is off unless you enable it.
+
+Add to `.env`:
+
+```bash
+VTT_MIDI_TOGGLE=1
+VTT_MIDI_DEVICE=mk3   # card-name fragment, or an absolute /dev/snd/midiC4D0 path
+VTT_MIDI_NOTE=60      # 60 = middle C (Do central)
+```
+
+`VTT_MIDI_DEVICE` is matched case-insensitively against `/proc/asound/cards`, so `mk3`, `MicroLab` and `Arturia` all select the same controller. Prefer a name over a path: ALSA card numbers get reassigned when you unplug and replug a USB device. Leave it empty to use the first MIDI device found.
+
+**Finding your note number.** Set `VTT_MIDI_DEBUG=1`, run `./main`, and press the key you want to use:
+
+```
+MIDI: note-on ch=0 note=60 vel=97
+```
+
+Put that number in `VTT_MIDI_NOTE` and turn the debug flag back off.
+
+Other knobs: `VTT_MIDI_CHANNEL` (restrict to one channel, `0`–`15`) and `VTT_MIDI_DEBOUNCE_MS` (default 250, the minimum gap between toggles).
+
+The listener never brings the daemon down. If the controller is off, unplugged, or held open by a DAW (rawmidi nodes are exclusive-open), it logs the reason once and keeps retrying with backoff; plug the device back in and it reconnects on its own. The window's Mute button and the MIDI key share the same state, so either one can undo the other.
 
 `supervisor.sh` is Linux-only and will refuse to run on macOS — on macOS, just run `./main` directly. There's no crash-restart supervision on macOS; if it crashes, restart it manually.
 
