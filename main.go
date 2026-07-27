@@ -20,6 +20,20 @@ func toggleDictation(vttsrv *vtt.VTTService) bool {
 	return newState
 }
 
+// toggleLanguage flips between English and Spanish recognition and returns
+// whether the new language is English. Shared by the language button and the
+// MIDI language trigger.
+func toggleLanguage(vttsrv *vtt.VTTService) bool {
+	if vttsrv.GetLanguage() == "en" {
+		vttsrv.SetLanguage("es")
+		_ = vtt.Notification("Dictation", "Language: Spanish")
+		return false
+	}
+	vttsrv.SetLanguage("en")
+	_ = vtt.Notification("Dictation", "Language: English")
+	return true
+}
+
 // gracefulShutdownFor tears down the service, releases the pidfile and exits.
 // Shared by the SIGINT/SIGTERM handler and the macOS "Exit" button.
 func gracefulShutdownFor(vttsrv *vtt.VTTService) {

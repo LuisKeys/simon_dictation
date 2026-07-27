@@ -139,3 +139,17 @@ void gui_set_mute_label(int enabled) {
     // Called from Go; marshal onto the GTK main loop.
     g_idle_add(apply_mute_label, GINT_TO_POINTER(enabled));
 }
+
+static gboolean apply_lang_label(gpointer data) {
+    int english = GPOINTER_TO_INT(data);
+    if (gLangButton) {
+        gtk_button_set_label(GTK_BUTTON(gLangButton), english ? "EN" : "ES");
+        apply_lang_color(gLangButton, english);
+    }
+    return G_SOURCE_REMOVE;
+}
+
+void gui_set_lang_label(int english) {
+    // Called from Go; marshal onto the GTK main loop.
+    g_idle_add(apply_lang_label, GINT_TO_POINTER(english));
+}

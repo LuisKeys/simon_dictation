@@ -130,8 +130,8 @@ func TestListenEndToEnd(t *testing.T) {
 	}
 
 	triggers := make(chan struct{}, 32)
-	cfg := Config{Device: fifo, Note: 60, Channel: anyChannel, Debounce: 250 * time.Millisecond}
-	go Run(cfg, func() { triggers <- struct{}{} })
+	cfg := Config{Device: fifo, Note: 60, LangNote: noLangNote, Channel: anyChannel, Debounce: 250 * time.Millisecond}
+	go Run(cfg, func(note int) { triggers <- struct{}{} })
 
 	w, err := os.OpenFile(fifo, os.O_WRONLY, 0)
 	if err != nil {

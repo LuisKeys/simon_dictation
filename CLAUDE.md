@@ -65,18 +65,19 @@ Flow, all in `vtt_service.go`:
 - `VTT_CAPITALIZE_SINGLE_NAMES=1` — allow capitalizing single-token names (off by default for precision).
 - `VTT_KEY_DELAY_MS`, `VTT_XDOTOOL_CLEAR_MODIFIERS` — xdotool sender tuning (Linux only; no effect on macOS).
 
-### MIDI mute toggle (Linux only; no effect on macOS)
+### MIDI mute/language toggle (Linux only; no effect on macOS)
 
-Pressing a configurable note on a MIDI controller toggles dictation, the same as clicking **Mute**. Opt-in: with `VTT_MIDI_TOGGLE` unset, no MIDI device is ever opened and behaviour is unchanged.
+Pressing a configurable note on a MIDI controller toggles dictation, the same as clicking **Mute**; pressing a second configurable note toggles language, the same as clicking **EN/ES**. Opt-in: with `VTT_MIDI_TOGGLE` unset, no MIDI device is ever opened and behaviour is unchanged.
 
 - `VTT_MIDI_TOGGLE` (unset = off) — `1` enables the listener.
 - `VTT_MIDI_NOTE` (default 60) — MIDI note number that toggles mute. 60 is middle C (Do central). Out-of-range values (not 0–127) are ignored in favour of the default.
+- `VTT_MIDI_LANG_NOTE` (unset = disabled) — MIDI note number that toggles language. Out-of-range values, or a value equal to `VTT_MIDI_NOTE`, are ignored and the language trigger stays disabled (logged once at startup).
 - `VTT_MIDI_DEVICE` (unset = autodetect) — a card-name fragment matched case-insensitively against the short id and long name in `/proc/asound/cards` (e.g. `mk3`, `MicroLab`, `Arturia` all resolve to the same card), or an absolute rawmidi path (`/dev/snd/midiC4D0`). Prefer the name: card numbers are reassigned on replug. Unset takes the first `/dev/snd/midiC*D*` in sorted order.
 - `VTT_MIDI_CHANNEL` (unset = any) — restrict to one MIDI channel, `0`–`15`.
-- `VTT_MIDI_DEBOUNCE_MS` (default 250) — minimum interval between triggers, so one key press is one toggle even with key bounce or a retriggering held key.
-- `VTT_MIDI_DEBUG` (unset/`0` = off) — logs every parsed note-on (`MIDI: note-on ch=0 note=60 vel=97`). This is how you discover the note number of a given key: enable it, press the key, read the log, then set `VTT_MIDI_NOTE`.
+- `VTT_MIDI_DEBOUNCE_MS` (default 250) — minimum interval between triggers, so one key press is one toggle even with key bounce or a retriggering held key. Shared across both notes.
+- `VTT_MIDI_DEBUG` (unset/`0` = off) — logs every parsed note-on (`MIDI: note-on ch=0 note=60 vel=97`). This is how you discover the note number of a given key: enable it, press the key, read the log, then set `VTT_MIDI_NOTE` or `VTT_MIDI_LANG_NOTE`.
 
-A toggle from MIDI updates the GTK Mute button through `setMuteLabel` (`gui_linux.go`) → `gui_set_mute_label` (`gui_linux.c`), which marshals onto the GTK main loop with `g_idle_add` and is therefore safe to call from the listener goroutine.
+`midi.Run` (`src/midi/listener.go`) reports the matched note number to a single callback; `startMidiToggle` (`midi_toggle_linux.go`) switches on it to call either `toggleDictation`+`setMuteLabel` or the shared `toggleLanguage` (`main.go`)+`setLangLabel`. Both `setMuteLabel`/`setLangLabel` (`gui_linux.go`) call into `gui_set_mute_label`/`gui_set_lang_label` (`gui_linux.c`), which marshal onto the GTK main loop with `g_idle_add` and are therefore safe to call from the listener goroutine.
 
 ## Voice commands
 

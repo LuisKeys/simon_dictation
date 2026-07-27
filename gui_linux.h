@@ -13,4 +13,8 @@ void gui_run(int langIsEnglish);
 // loop. Reserved for a future state-sync feature; not wired in the MVP.
 void gui_set_mute_label(int enabled);
 
+// gui_set_lang_label updates the EN/ES button from Go on the GTK main loop,
+// e.g. after a language change triggered by the MIDI listener.
+void gui_set_lang_label(int english);
+
 #endif

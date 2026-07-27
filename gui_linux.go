@@ -27,14 +27,10 @@ func goOnMuteClicked() C.int {
 
 //export goOnLangClicked
 func goOnLangClicked() C.int {
-	if guiService.GetLanguage() == "en" {
-		guiService.SetLanguage("es")
-		_ = vtt.Notification("Dictation", "Language: Spanish")
-		return 0
+	if toggleLanguage(guiService) {
+		return 1
 	}
-	guiService.SetLanguage("en")
-	_ = vtt.Notification("Dictation", "Language: English")
-	return 1
+	return 0
 }
 
 //export goOnExitClicked
@@ -52,6 +48,17 @@ func setMuteLabel(enabled bool) {
 		state = 1
 	}
 	C.gui_set_mute_label(state)
+}
+
+// setLangLabel syncs the EN/ES button after a language change that did not
+// originate from the button itself (e.g. the MIDI trigger). Safe to call from
+// any goroutine; see setMuteLabel.
+func setLangLabel(english bool) {
+	state := C.int(0)
+	if english {
+		state = 1
+	}
+	C.gui_set_lang_label(state)
 }
 
 // runControlUI wires up the service pointer and enters the GTK main loop.

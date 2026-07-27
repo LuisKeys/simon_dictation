@@ -29,6 +29,7 @@ const (
 	defaultNote     = 60 // C4, middle Do
 	defaultDebounce = 250 * time.Millisecond
 
+	noLangNote = -1 // VTT_MIDI_LANG_NOTE unset: language trigger disabled
 	anyChannel = -1
 
 	minBackoff = 1 * time.Second
@@ -45,6 +46,9 @@ type Config struct {
 	Device string
 	// Note is the MIDI note number that toggles dictation.
 	Note int
+	// LangNote is the MIDI note number that toggles language, or noLangNote
+	// if VTT_MIDI_LANG_NOTE is unset (feature disabled).
+	LangNote int
 	// Channel restricts the trigger to one MIDI channel (0-15), or
 	// anyChannel to accept every channel.
 	Channel int
@@ -68,6 +72,7 @@ func ConfigFromEnv() (Config, bool) {
 	cfg := Config{
 		Device:   os.Getenv("VTT_MIDI_DEVICE"),
 		Note:     defaultNote,
+		LangNote: noLangNote,
 		Channel:  anyChannel,
 		Debounce: defaultDebounce,
 	}
@@ -78,6 +83,19 @@ func ConfigFromEnv() (Config, bool) {
 		} else {
 			log.Printf("MIDI: invalid VTT_MIDI_NOTE %q, using %d", val, cfg.Note)
 		}
+	}
+
+	if val := os.Getenv("VTT_MIDI_LANG_NOTE"); val != "" {
+		if parsed, err := strconv.Atoi(val); err == nil && parsed >= 0 && parsed <= 127 {
+			cfg.LangNote = parsed
+		} else {
+			log.Printf("MIDI: invalid VTT_MIDI_LANG_NOTE %q, language trigger disabled", val)
+		}
+	}
+
+	if cfg.LangNote == cfg.Note {
+		log.Printf("MIDI: VTT_MIDI_LANG_NOTE %d clashes with the mute note, language trigger disabled", cfg.LangNote)
+		cfg.LangNote = noLangNote
 	}
 
 	if val := os.Getenv("VTT_MIDI_CHANNEL"); val != "" {
@@ -103,17 +121,22 @@ func ConfigFromEnv() (Config, bool) {
 	return cfg, true
 }
 
-// Run opens the MIDI device and dispatches onTrigger every time the configured
-// note is pressed. It blocks forever, reconnecting on failure, and is meant to
-// be started with `go midi.Run(...)`.
+// Run opens the MIDI device and calls onTrigger with the matched note every
+// time cfg.Note or cfg.LangNote is pressed. It blocks forever, reconnecting on
+// failure, and is meant to be started with `go midi.Run(...)`.
 //
 // onTrigger runs on this goroutine, so it must not block for long.
-func Run(cfg Config, onTrigger func()) {
+func Run(cfg Config, onTrigger func(note int)) {
 	chDesc := "any"
 	if cfg.Channel != anyChannel {
 		chDesc = strconv.Itoa(cfg.Channel)
 	}
-	log.Printf("MIDI: toggle enabled (note=%d channel=%s debounce=%v)", cfg.Note, chDesc, cfg.Debounce)
+	langDesc := "none"
+	if cfg.LangNote != noLangNote {
+		langDesc = strconv.Itoa(cfg.LangNote)
+	}
+	log.Printf("MIDI: toggle enabled (mute note=%d, lang note=%s, channel=%s, debounce=%v)",
+		cfg.Note, langDesc, chDesc, cfg.Debounce)
 
 	backoff := minBackoff
 	// lastFailure dedupes the log while the controller stays unavailable: only
@@ -173,7 +196,7 @@ func nextBackoff(current time.Duration) time.Duration {
 }
 
 // listen reads the device until it errors out (unplug, EIO) or hits EOF.
-func listen(file *os.File, cfg Config, onTrigger func()) error {
+func listen(file *os.File, cfg Config, onTrigger func(note int)) error {
 	var p parser
 	var lastTrigger time.Time
 
@@ -193,20 +216,22 @@ func listen(file *os.File, cfg Config, onTrigger func()) error {
 			log.Printf("MIDI: note-on ch=%d note=%d vel=%d", channel, note, velocity)
 		}
 
-		if note != cfg.Note {
+		if note != cfg.Note && note != cfg.LangNote {
 			continue
 		}
 		if cfg.Channel != anyChannel && channel != cfg.Channel {
 			continue
 		}
 		// Debounce repeated note-ons (key bounce, or a held key retriggering
-		// without an intervening note-off) so one press is one toggle.
+		// without an intervening note-off) so one press is one toggle. Shared
+		// across both notes: a mute press immediately followed by a language
+		// press within the window is treated as bounce too.
 		if cfg.Debounce > 0 && time.Since(lastTrigger) < cfg.Debounce {
 			continue
 		}
 		lastTrigger = time.Now()
 
-		onTrigger()
+		onTrigger(note)
 	}
 }
 
